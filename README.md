@@ -6,6 +6,8 @@ A modern finance application built with Next.js, Shadcn UI, Tailwind CSS, and Su
 
 - **Dashboard**: Overview of your financial status with key metrics
 - **Transactions**: Track and manage your income and expenses
+- **Categories**: Manage categories for your transactions
+- **Accounts**: Manage your bank accounts and credit cards
 - **Reports**: Visualize your financial data with charts and statistics
 - **Settings**: Manage your profile and application preferences
 - **Database**: Store your transactions in Supabase
@@ -29,7 +31,38 @@ A modern finance application built with Next.js, Shadcn UI, Tailwind CSS, and Su
 ### Supabase Setup
 
 1. Create a new Supabase project at [https://app.supabase.com/](https://app.supabase.com/)
-2. Create a new table called `transactions` with the following schema:
+2. Create the following tables:
+
+#### Categories Table
+
+```sql
+create table categories (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
+  type text not null check (type in ('income', 'expense', 'both')),
+  color text,
+  icon text
+);
+```
+
+#### Accounts Table
+
+```sql
+create table accounts (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
+  type text not null check (type in ('checking', 'savings', 'credit_card', 'investment', 'cash', 'digital_wallet')),
+  institution text,
+  color text,
+  icon text,
+  balance numeric default 0,
+  credit_limit numeric,
+  closing_day integer,
+  due_day integer
+);
+```
+
+#### Transactions Table
 
 ```sql
 create table transactions (
@@ -37,9 +70,9 @@ create table transactions (
   type text not null check (type in ('income', 'expense')),
   date timestamp with time zone not null,
   description text not null,
-  category text not null,
+  category_id uuid not null references categories(id),
   amount numeric not null check (amount > 0),
-  account text not null,
+  account_id uuid not null references accounts(id),
   wedding_category text,
   class text not null check (class in ('essential', 'non-essential', 'investment', 'income', 'business'))
 );
@@ -83,6 +116,8 @@ yarn dev
 finance/
 ├── src/
 │   ├── app/                  # Next.js App Router
+│   │   ├── accounts/         # Accounts page
+│   │   ├── categories/       # Categories page
 │   │   ├── transactions/     # Transactions page
 │   │   ├── reports/          # Reports page
 │   │   ├── settings/         # Settings page
@@ -95,7 +130,9 @@ finance/
 │   │   ├── transaction-form.tsx # Transaction form component
 │   │   └── add-transaction-dialog.tsx # Dialog for adding transactions
 │   ├── context/              # React context
-│   │   └── transaction-context.tsx # Transaction context provider
+│   │   ├── transaction-context.tsx # Transaction context provider
+│   │   ├── category-context.tsx # Category context provider
+│   │   └── account-context.tsx # Account context provider
 │   ├── lib/                  # Utility functions
 │   │   ├── utils.ts          # General utilities
 │   │   └── supabase.ts       # Supabase client and functions

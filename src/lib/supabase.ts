@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Transaction, Category } from '@/types';
+import { Transaction, Category, Account } from '@/types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -8,6 +8,82 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const transactionsTable = 'transactions';
 export const categoriesTable = 'categories';
+export const accountsTable = 'accounts';
+
+// Funções para gerenciar contas
+export async function fetchAccounts(): Promise<Account[]> {
+  const { data, error } = await supabase
+    .from(accountsTable)
+    .select('*')
+    .order('name');
+
+  if (error) {
+    console.error('Erro ao buscar contas:', JSON.stringify(error, null, 2));
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function addAccount(account: Omit<Account, 'id'>): Promise<Account | null> {
+  const { data, error } = await supabase
+    .from(accountsTable)
+    .insert([account])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao adicionar conta:', JSON.stringify(error, null, 2));
+    return null;
+  }
+
+  return data;
+}
+
+export async function updateAccount(id: string, account: Partial<Account>): Promise<boolean> {
+  const { error } = await supabase
+    .from(accountsTable)
+    .update(account)
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao atualizar conta:', JSON.stringify(error, null, 2));
+    return false;
+  }
+
+  return true;
+}
+
+export async function deleteAccount(id: string): Promise<boolean> {
+  // Verificar se a conta está sendo usada em alguma transação
+  const { data: transactions, error: checkError } = await supabase
+    .from(transactionsTable)
+    .select('id')
+    .eq('account_id', id)
+    .limit(1);
+
+  if (checkError) {
+    console.error('Erro ao verificar uso da conta:', JSON.stringify(checkError, null, 2));
+    return false;
+  }
+
+  if (transactions && transactions.length > 0) {
+    console.error('Não é possível excluir: conta está sendo usada em transações');
+    return false;
+  }
+
+  const { error } = await supabase
+    .from(accountsTable)
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao excluir conta:', JSON.stringify(error, null, 2));
+    return false;
+  }
+
+  return true;
+}
 
 // Funções para gerenciar categorias
 export async function fetchCategories(): Promise<Category[]> {
@@ -90,7 +166,8 @@ export async function fetchTransactions(): Promise<Transaction[]> {
     .from(transactionsTable)
     .select(`
       *,
-      categories:category_id (id, name, type, color)
+      categories:category_id (id, name, type, color),
+      accounts:account_id (id, name, type, color)
     `);
 
   if (error) {
@@ -99,14 +176,17 @@ export async function fetchTransactions(): Promise<Transaction[]> {
   }
 
   return (data || []).map(transaction => {
-    const { wedding_category, categories, category_id, ...rest } = transaction;
+    const { wedding_category, categories, category_id, accounts, account_id, ...rest } = transaction;
     return {
       ...rest,
       date: new Date(transaction.date),
       weddingCategory: wedding_category,
       category: categories?.name || '',
       categoryId: category_id,
-      categoryColor: categories?.color || ''
+      categoryColor: categories?.color || '',
+      account: accounts?.name || '',
+      accountId: account_id,
+      accountColor: accounts?.color || ''
     };
   });
 }
@@ -117,13 +197,14 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     return null;
   }
 
-  const { weddingCategory, category, categoryId, categoryColor, ...rest } = transaction;
+  const { weddingCategory, category, categoryId, categoryColor, account, accountId, accountColor, ...rest } = transaction;
   
   const formattedTransaction = {
     ...rest,
     date: transaction.date instanceof Date ? transaction.date.toISOString() : transaction.date,
     wedding_category: weddingCategory,
-    category_id: categoryId
+    category_id: categoryId,
+    account_id: accountId
   };
   
   console.log('Sending transaction to Supabase:', JSON.stringify(formattedTransaction, null, 2));
@@ -133,7 +214,8 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     .insert([formattedTransaction])
     .select(`
       *,
-      categories:category_id (id, name, type, color)
+      categories:category_id (id, name, type, color),
+      accounts:account_id (id, name, type, color)
     `)
     .single();
 
@@ -142,7 +224,7 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     return null;
   }
 
-  const { wedding_category, categories, category_id, ...restData } = data;
+  const { wedding_category, categories, category_id, accounts, account_id, ...restData } = data;
   
   return {
     ...restData,
@@ -150,18 +232,22 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     weddingCategory: wedding_category,
     category: categories?.name || '',
     categoryId: category_id,
-    categoryColor: categories?.color || ''
+    categoryColor: categories?.color || '',
+    account: accounts?.name || '',
+    accountId: account_id,
+    accountColor: accounts?.color || ''
   };
 }
 
 export async function updateTransaction(id: string, transaction: Partial<Transaction>): Promise<boolean> {
-  const { weddingCategory, category, categoryId, categoryColor, ...rest } = transaction;
+  const { weddingCategory, category, categoryId, categoryColor, account, accountId, accountColor, ...rest } = transaction;
   
   const formattedTransaction = {
     ...rest,
     date: transaction.date instanceof Date ? transaction.date.toISOString() : transaction.date,
     ...(weddingCategory !== undefined && { wedding_category: weddingCategory }),
-    ...(categoryId !== undefined && { category_id: categoryId })
+    ...(categoryId !== undefined && { category_id: categoryId }),
+    ...(accountId !== undefined && { account_id: accountId })
   };
 
   const { error } = await supabase

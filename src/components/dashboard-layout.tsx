@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PieChart, Wallet, Settings, LogOut, Menu, X, Tag } from "lucide-react";
+import { Home, PieChart, Wallet, Settings, LogOut, Menu, X, Tag, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
   { name: "Painel", href: "/", icon: Home },
   { name: "Transações", href: "/transactions", icon: Wallet },
+  { name: "Contas", href: "/accounts", icon: CreditCard },
   { name: "Categorias", href: "/categories", icon: Tag },
   { name: "Relatórios", href: "/reports", icon: PieChart },
   { name: "Configurações", href: "/settings", icon: Settings },

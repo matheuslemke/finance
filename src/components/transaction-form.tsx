@@ -14,8 +14,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Transaction, TransactionType, TransactionClass, DEFAULT_ACCOUNTS, DEFAULT_WEDDING_CATEGORIES } from "@/types";
+import { Transaction, TransactionType, TransactionClass, DEFAULT_WEDDING_CATEGORIES } from "@/types";
 import { useCategories } from "@/context/category-context";
+import { useAccounts } from "@/context/account-context";
 
 interface TransactionFormProps {
   onSubmit: (data: Omit<Transaction, "id">) => void;
@@ -25,6 +26,7 @@ interface TransactionFormProps {
 
 export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: TransactionFormProps) {
   const { categories, loading: loadingCategories } = useCategories();
+  const { accounts, loading: loadingAccounts } = useAccounts();
   const [transactionType, setTransactionType] = useState<TransactionType>("expense");
   const [includeWedding, setIncludeWedding] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
@@ -38,6 +40,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
       categoryId: "",
       amount: 0,
       account: "",
+      accountId: "",
       class: "essential" as TransactionClass,
     }
   });
@@ -45,7 +48,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
   register("type", { required: true });
   register("date", { required: true });
   register("categoryId", { required: true });
-  register("account", { required: true });
+  register("accountId", { required: true });
   register("class", { required: true });
   register("weddingCategory", { required: includeWedding });
 
@@ -53,8 +56,16 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
     category => category.type === transactionType || category.type === "both"
   );
 
+  const filteredAccounts = accounts.filter(account => {
+    // Para despesas, mostrar todas as contas
+    if (transactionType === "expense") return true;
+    
+    // Para receitas, não mostrar cartões de crédito
+    return account.type !== "credit_card";
+  });
+
   const submitForm = (data: Partial<Omit<Transaction, "id">>) => {
-    if (!data.description || !data.categoryId || !data.account || !data.class || !data.amount || data.amount <= 0) {
+    if (!data.description || !data.categoryId || !data.accountId || !data.class || !data.amount || data.amount <= 0) {
       return;
     }
 
@@ -65,6 +76,9 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
     // Encontrar a categoria selecionada para obter o nome e a cor
     const selectedCategory = categories.find(cat => cat.id === data.categoryId);
     
+    // Encontrar a conta selecionada para obter o nome e a cor
+    const selectedAccount = accounts.find(acc => acc.id === data.accountId);
+    
     const formattedData = {
       type: transactionType,
       date: date,
@@ -73,7 +87,9 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
       category: selectedCategory?.name || "",
       categoryColor: selectedCategory?.color,
       amount: parseFloat(data.amount?.toString() || "0"),
-      account: data.account || "",
+      accountId: data.accountId || "",
+      account: selectedAccount?.name || "",
+      accountColor: selectedAccount?.color,
       class: data.class as TransactionClass,
       weddingCategory: includeWedding ? data.weddingCategory : undefined,
     } as Omit<Transaction, "id">;
@@ -98,6 +114,8 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               setValue("type", value as TransactionType);
               // Limpar a categoria selecionada quando mudar o tipo
               setValue("categoryId", "");
+              // Limpar a conta selecionada quando mudar o tipo
+              setValue("accountId", "");
             }}
             value={transactionType}
             disabled={isSubmitting}
@@ -233,24 +251,43 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="account">Conta</Label>
+            <Label htmlFor="accountId">Conta</Label>
             <Select 
-              onValueChange={(value) => setValue("account", value)} 
+              onValueChange={(value) => setValue("accountId", value)} 
               defaultValue=""
-              disabled={isSubmitting}
+              disabled={isSubmitting || loadingAccounts}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione a conta" />
+                <SelectValue placeholder={loadingAccounts ? "Carregando..." : "Selecione a conta"} />
               </SelectTrigger>
               <SelectContent position="popper">
-                {DEFAULT_ACCOUNTS.map((account) => (
-                  <SelectItem key={account} value={account}>
-                    {account}
-                  </SelectItem>
-                ))}
+                {loadingAccounts ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span>Carregando contas...</span>
+                  </div>
+                ) : filteredAccounts.length > 0 ? (
+                  filteredAccounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      <div className="flex items-center">
+                        {account.color && (
+                          <div 
+                            className="w-3 h-3 rounded-full mr-2" 
+                            style={{ backgroundColor: account.color }}
+                          />
+                        )}
+                        {account.name}
+                      </div>
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="py-2 px-2 text-sm text-muted-foreground">
+                    Nenhuma conta disponível. Adicione contas na página de contas.
+                  </div>
+                )}
               </SelectContent>
             </Select>
-            {errors.account && (
+            {errors.accountId && (
               <p className="text-sm text-red-500">A conta é obrigatória</p>
             )}
           </div>

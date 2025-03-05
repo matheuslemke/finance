@@ -81,9 +81,10 @@ export default function TransactionsPage() {
     variant?: "default" | "category" | "wedding" | "account" | "class";
     className?: string;
     classValue?: TransactionClass;
+    color?: string;
   }
 
-  const Chip = ({ text, variant = "default", className, classValue }: ChipProps) => {
+  const Chip = ({ text, variant = "default", className, classValue, color }: ChipProps) => {
     let chipStyle = "bg-gray-100 text-gray-800";
     
     if (variant === "category") {
@@ -98,6 +99,12 @@ export default function TransactionsPage() {
     
     return (
       <div className={`inline-flex items-center justify-center rounded-full px-2.5 py-1 ${chipStyle} ${className || ""}`}>
+        {color && (
+          <div 
+            className="w-2 h-2 rounded-full mr-1.5" 
+            style={{ backgroundColor: color }}
+          />
+        )}
         <span className="text-xs font-medium truncate">{text}</span>
       </div>
     );
@@ -153,7 +160,11 @@ export default function TransactionsPage() {
           <div className="grid grid-cols-2 gap-x-3 mb-2">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Categoria</p>
-              <Chip text={transaction.category} variant="category" />
+              <Chip 
+                text={transaction.category} 
+                variant="category" 
+                color={transaction.categoryColor}
+              />
             </div>
             
             {transaction.weddingCategory ? (
@@ -170,7 +181,11 @@ export default function TransactionsPage() {
           <div className="grid grid-cols-2 gap-x-3 mb-2">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Conta</p>
-              <Chip text={transaction.account} variant="account" />
+              <Chip 
+                text={transaction.account} 
+                variant="account" 
+                color={transaction.accountColor}
+              />
             </div>
             
             <div>
@@ -268,7 +283,11 @@ export default function TransactionsPage() {
                               </td>
                               <td className="py-3 px-4 text-sm max-w-[200px] truncate">{transaction.description}</td>
                               <td className="py-3 px-4 text-sm">
-                                <Chip text={transaction.category} variant="category" />
+                                <Chip 
+                                  text={transaction.category} 
+                                  variant="category" 
+                                  color={transaction.categoryColor}
+                                />
                               </td>
                               <td className="py-3 px-4 text-sm">
                                 {transaction.weddingCategory ? (
@@ -278,7 +297,11 @@ export default function TransactionsPage() {
                                 )}
                               </td>
                               <td className="py-3 px-4 text-sm">
-                                <Chip text={transaction.account} variant="account" />
+                                <Chip 
+                                  text={transaction.account} 
+                                  variant="account" 
+                                  color={transaction.accountColor}
+                                />
                               </td>
                               <td className="py-3 px-4 text-sm">
                                 <Chip 
