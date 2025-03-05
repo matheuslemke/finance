@@ -54,19 +54,23 @@ export default function Home() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Painel</h1>
-          <AddTransactionDialog onTransactionAdded={handleAddTransaction} />
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Painel</h1>
+          <AddTransactionDialog onTransactionAdded={handleAddTransaction}>
+            <Button className="w-full sm:w-auto">
+              <span className="mr-1">Adicionar Transação</span>
+            </Button>
+          </AddTransactionDialog>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Saldo Total</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">R${totalBalance.toFixed(2)}</div>
+              <div className="text-xl sm:text-2xl font-bold">R${totalBalance.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 {totalBalance >= 0 ? "Você está indo bem!" : "Hora de reduzir as despesas"}
               </p>
@@ -79,7 +83,7 @@ export default function Home() {
               <ArrowUpRight className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">R${totalIncome.toFixed(2)}</div>
+              <div className="text-xl sm:text-2xl font-bold">R${totalIncome.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 {transactions.filter(t => t.type === "income").length} transações de receita
               </p>
@@ -92,7 +96,7 @@ export default function Home() {
               <ArrowDownRight className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">R${totalExpenses.toFixed(2)}</div>
+              <div className="text-xl sm:text-2xl font-bold">R${totalExpenses.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 {transactions.filter(t => t.type === "expense").length} transações de despesa
               </p>
@@ -105,7 +109,7 @@ export default function Home() {
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-xl sm:text-2xl font-bold">
                 {totalIncome > 0 
                   ? `${(((totalIncome - totalExpenses) / totalIncome) * 100).toFixed(1)}%` 
                   : "0%"}
@@ -119,7 +123,7 @@ export default function Home() {
           </Card>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Transações Recentes</CardTitle>
@@ -130,7 +134,7 @@ export default function Home() {
                 {recentTransactions.length > 0 ? (
                   recentTransactions.map((transaction) => (
                     <div key={transaction.id} className="flex items-center justify-between border-b pb-2">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 max-w-[70%]">
                         <div className={`p-2 rounded-full ${transaction.type === "expense" ? 'bg-red-100' : 'bg-green-100'}`}>
                           {transaction.type === "expense" ? (
                             <ArrowDownRight className="h-4 w-4 text-red-500" />
@@ -139,13 +143,13 @@ export default function Home() {
                           )}
                         </div>
                         <div>
-                          <p className="font-medium">{transaction.description}</p>
+                          <p className="font-medium text-sm truncate">{transaction.description}</p>
                           <p className="text-xs text-muted-foreground">
                             {format(transaction.date, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}
                           </p>
                         </div>
                       </div>
-                      <p className={`font-medium ${transaction.type === "expense" ? 'text-red-500' : 'text-green-500'}`}>
+                      <p className={`font-medium text-sm ${transaction.type === "expense" ? 'text-red-500' : 'text-green-500'}`}>
                         {transaction.type === "expense" ? '-' : '+'}R${transaction.amount.toFixed(2)}
                       </p>
                     </div>
@@ -174,13 +178,13 @@ export default function Home() {
                 {upcomingBills.length > 0 ? (
                   upcomingBills.map((bill) => (
                     <div key={bill.id} className="flex items-center justify-between border-b pb-2">
-                      <div>
-                        <p className="font-medium">{bill.description}</p>
+                      <div className="max-w-[70%]">
+                        <p className="font-medium text-sm truncate">{bill.description}</p>
                         <p className="text-xs text-muted-foreground">
                           Vence em {format(bill.date, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}
                         </p>
                       </div>
-                      <p className="font-medium">
+                      <p className="font-medium text-sm">
                         R${bill.amount.toFixed(2)}
                       </p>
                     </div>

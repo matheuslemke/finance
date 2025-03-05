@@ -8,14 +8,17 @@ import { ArrowUpRight, ArrowDownRight, Search, Filter, Trash2, Loader2 } from "l
 import { useTransactions } from "@/context/transaction-context";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { useState } from "react";
-import { TransactionClass } from "@/types";
+import { TransactionClass, Transaction } from "@/types";
+import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function TransactionsPage() {
   const { transactions, loading, addTransaction, deleteTransaction } = useTransactions();
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const filteredTransactions = transactions.filter(transaction => 
     transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -60,38 +63,173 @@ export default function TransactionsPage() {
     setDeletingId(id);
     try {
       await deleteTransaction(id);
+      setConfirmDialogOpen(false);
     } finally {
       setDeletingId(null);
+      setTransactionToDelete(null);
     }
+  };
+
+  const openDeleteConfirmation = (transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+    setConfirmDialogOpen(true);
+  };
+
+  // Componente de chip reutilizável
+  interface ChipProps {
+    text: string;
+    variant?: "default" | "category" | "wedding" | "account" | "class";
+    className?: string;
+    classValue?: TransactionClass;
+  }
+
+  const Chip = ({ text, variant = "default", className, classValue }: ChipProps) => {
+    let chipStyle = "bg-gray-100 text-gray-800";
+    
+    if (variant === "category") {
+      chipStyle = "bg-gray-100 text-gray-800";
+    } else if (variant === "wedding") {
+      chipStyle = "bg-pink-100 text-pink-800";
+    } else if (variant === "account") {
+      chipStyle = "bg-blue-50 text-blue-700";
+    } else if (variant === "class" && classValue) {
+      chipStyle = getClassStyling(classValue);
+    }
+    
+    return (
+      <div className={`inline-flex items-center justify-center rounded-full px-2.5 py-1 ${chipStyle} ${className || ""}`}>
+        <span className="text-xs font-medium truncate">{text}</span>
+      </div>
+    );
+  };
+
+  // Componente de card personalizado para transações sem o padding vertical padrão
+  const TransactionListCard = ({ className, ...props }: React.ComponentProps<"div">) => {
+    return (
+      <div
+        data-slot="card"
+        className={cn(
+          "bg-card text-card-foreground flex flex-col gap-2 rounded-xl border py-0 shadow-sm",
+          className
+        )}
+        {...props}
+      />
+    );
+  };
+
+  // Componente de card para transação em visualização móvel
+  const TransactionCard = ({ transaction }: { transaction: Transaction }) => {
+    return (
+      <TransactionListCard className="mb-3 hover:shadow-md transition-shadow">
+        <CardContent className="px-4 py-3">
+          {/* Data e Valor */}
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">{format(transaction.date, "dd/MM/yyyy")}</p>
+            <div className="flex items-center">
+              {transaction.type === "income" ? (
+                <ArrowUpRight className="mr-1 h-5 w-5 text-green-500" />
+              ) : (
+                <ArrowDownRight className="mr-1 h-5 w-5 text-red-500" />
+              )}
+              <span
+                className={
+                  transaction.type === "income"
+                    ? "text-green-500 font-medium text-lg"
+                    : "text-red-500 font-medium text-lg"
+                }
+              >
+                {transaction.type === "income" ? "+" : "-"}R$
+                {transaction.amount.toFixed(2)}
+              </span>
+            </div>
+          </div>
+          
+          {/* Descrição */}
+          <div className="mb-2">
+            <h3 className="font-medium text-lg">{transaction.description}</h3>
+          </div>
+          
+          {/* Categoria e Categoria de Casamento */}
+          <div className="grid grid-cols-2 gap-x-3 mb-2">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Categoria</p>
+              <Chip text={transaction.category} variant="category" />
+            </div>
+            
+            {transaction.weddingCategory ? (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Cat. Casamento</p>
+                <Chip text={transaction.weddingCategory} variant="wedding" />
+              </div>
+            ) : (
+              <div></div> // Espaço vazio para manter o grid alinhado
+            )}
+          </div>
+          
+          {/* Conta e Classe */}
+          <div className="grid grid-cols-2 gap-x-3 mb-2">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Conta</p>
+              <Chip text={transaction.account} variant="account" />
+            </div>
+            
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Classe</p>
+              <Chip 
+                text={getClassDisplayName(transaction.class)} 
+                variant="class" 
+                classValue={transaction.class} 
+              />
+            </div>
+          </div>
+          
+          {/* Ações */}
+          <div className="flex justify-end">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => openDeleteConfirmation(transaction)}
+              className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </TransactionListCard>
+    );
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Transações</h1>
-          <AddTransactionDialog onTransactionAdded={addTransaction} />
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Transações</h1>
+          <AddTransactionDialog onTransactionAdded={addTransaction}>
+            <Button className="w-full sm:w-auto">
+              <span className="mr-1">Adicionar Transação</span>
+            </Button>
+          </AddTransactionDialog>
         </div>
         
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <CardTitle>Todas as Transações</CardTitle>
                 <CardDescription>Uma lista de todas as suas transações</CardDescription>
               </div>
-              <div className="flex space-x-2">
-                <div className="relative">
+              <div className="flex w-full sm:w-auto space-x-2">
+                <div className="relative flex-grow">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Pesquisar..."
-                    className="pl-8 w-[200px]"
+                    className="pl-8 w-full h-9"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" className="flex-shrink-0 h-9 w-9">
                   <Filter className="h-4 w-4" />
                 </Button>
               </div>
@@ -105,86 +243,109 @@ export default function TransactionsPage() {
               </div>
             ) : (
               <>
-                <div className="rounded-md border">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="py-3 px-4 text-left font-medium text-sm">Data</th>
-                        <th className="py-3 px-4 text-left font-medium text-sm">Descrição</th>
-                        <th className="py-3 px-4 text-left font-medium text-sm">Categoria</th>
-                        <th className="py-3 px-4 text-left font-medium text-sm">Conta</th>
-                        <th className="py-3 px-4 text-left font-medium text-sm">Classe</th>
-                        <th className="py-3 px-4 text-right font-medium text-sm">Valor</th>
-                        <th className="py-3 px-4 text-right font-medium text-sm">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTransactions.length > 0 ? (
-                        filteredTransactions.map((transaction) => (
-                          <tr key={transaction.id} className="border-b">
-                            <td className="py-3 px-4 text-sm">
-                              {format(transaction.date, "dd/MM/yyyy")}
-                            </td>
-                            <td className="py-3 px-4 text-sm">{transaction.description}</td>
-                            <td className="py-3 px-4 text-sm">
-                              <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-gray-100">
-                                {transaction.category}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-sm">{transaction.account}</td>
-                            <td className="py-3 px-4 text-sm">
-                              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getClassStyling(transaction.class)}`}>
-                                {getClassDisplayName(transaction.class)}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-right">
-                              <div className="flex items-center justify-end">
-                                {transaction.type === "income" ? (
-                                  <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
+                {/* Visualização para desktop/tablet (tabela) */}
+                <div className="hidden md:block overflow-hidden rounded-md border">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="py-3 px-4 text-left font-medium text-sm">Data</th>
+                          <th className="py-3 px-4 text-left font-medium text-sm">Descrição</th>
+                          <th className="py-3 px-4 text-left font-medium text-sm">Categoria</th>
+                          <th className="py-3 px-4 text-left font-medium text-sm">Cat. Casamento</th>
+                          <th className="py-3 px-4 text-left font-medium text-sm">Conta</th>
+                          <th className="py-3 px-4 text-left font-medium text-sm">Classe</th>
+                          <th className="py-3 px-4 text-right font-medium text-sm">Valor</th>
+                          <th className="py-3 px-4 text-right font-medium text-sm">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredTransactions.length > 0 ? (
+                          filteredTransactions.map((transaction) => (
+                            <tr key={transaction.id} className="border-b">
+                              <td className="py-3 px-4 text-sm">
+                                {format(transaction.date, "dd/MM/yyyy")}
+                              </td>
+                              <td className="py-3 px-4 text-sm max-w-[200px] truncate">{transaction.description}</td>
+                              <td className="py-3 px-4 text-sm">
+                                <Chip text={transaction.category} variant="category" />
+                              </td>
+                              <td className="py-3 px-4 text-sm">
+                                {transaction.weddingCategory ? (
+                                  <Chip text={transaction.weddingCategory} variant="wedding" />
                                 ) : (
-                                  <ArrowDownRight className="mr-1 h-4 w-4 text-red-500" />
+                                  <span className="text-muted-foreground">-</span>
                                 )}
-                                <span
-                                  className={
-                                    transaction.type === "income"
-                                      ? "text-green-500"
-                                      : "text-red-500"
-                                  }
+                              </td>
+                              <td className="py-3 px-4 text-sm">
+                                <Chip text={transaction.account} variant="account" />
+                              </td>
+                              <td className="py-3 px-4 text-sm">
+                                <Chip 
+                                  text={getClassDisplayName(transaction.class)} 
+                                  variant="class" 
+                                  classValue={transaction.class} 
+                                />
+                              </td>
+                              <td className="py-3 px-4 text-sm text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end">
+                                  {transaction.type === "income" ? (
+                                    <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <ArrowDownRight className="mr-1 h-4 w-4 text-red-500" />
+                                  )}
+                                  <span
+                                    className={
+                                      transaction.type === "income"
+                                        ? "text-green-500"
+                                        : "text-red-500"
+                                    }
+                                  >
+                                    {transaction.type === "income" ? "+" : "-"}R$
+                                    {transaction.amount.toFixed(2)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-right">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => openDeleteConfirmation(transaction)}
+                                  className="text-red-500"
                                 >
-                                  {transaction.type === "income" ? "+" : "-"}R$
-                                  {transaction.amount.toFixed(2)}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-right">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleDelete(transaction.id)}
-                                disabled={deletingId === transaction.id}
-                              >
-                                {deletingId === transaction.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-red-500" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4 text-red-500" />
-                                )}
-                              </Button>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={8} className="py-6 text-center text-muted-foreground">
+                              {searchTerm ? "Nenhuma transação encontrada para sua pesquisa." : "Nenhuma transação ainda. Adicione uma para começar."}
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={7} className="py-6 text-center text-muted-foreground">
-                            {searchTerm ? "Nenhuma transação encontrada para sua pesquisa." : "Nenhuma transação ainda. Adicione uma para começar."}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+
+                {/* Visualização para mobile (cards) */}
+                <div className="md:hidden space-y-3">
+                  {filteredTransactions.length > 0 ? (
+                    filteredTransactions.map((transaction) => (
+                      <TransactionCard key={transaction.id} transaction={transaction} />
+                    ))
+                  ) : (
+                    <div className="py-6 text-center text-muted-foreground">
+                      {searchTerm ? "Nenhuma transação encontrada para sua pesquisa." : "Nenhuma transação ainda. Adicione uma para começar."}
+                    </div>
+                  )}
+                </div>
+
                 {filteredTransactions.length > 0 && (
-                  <div className="flex items-center justify-between mt-4">
-                    <p className="text-sm text-muted-foreground">
+                  <div className="flex items-center justify-center sm:justify-between mt-4">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Mostrando {filteredTransactions.length} de {transactions.length} transações
                     </p>
                   </div>
@@ -194,6 +355,58 @@ export default function TransactionsPage() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Diálogo de confirmação de exclusão */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {transactionToDelete && (
+            <div className="py-3">
+              <p className="font-medium">{transactionToDelete.description}</p>
+              <div className="flex items-center mt-1">
+                <span className={transactionToDelete.type === "income" ? "text-green-500" : "text-red-500"}>
+                  {transactionToDelete.type === "income" ? "+" : "-"}R${transactionToDelete.amount.toFixed(2)}
+                </span>
+                <span className="mx-2 text-muted-foreground">•</span>
+                <span className="text-sm text-muted-foreground">
+                  {format(transactionToDelete.date, "dd/MM/yyyy")}
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => transactionToDelete && handleDelete(transactionToDelete.id)}
+              disabled={deletingId !== null}
+            >
+              {deletingId ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 } 

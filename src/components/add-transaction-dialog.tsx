@@ -34,10 +34,10 @@ export function AddTransactionDialog({ onTransactionAdded, children }: AddTransa
       <DialogTrigger asChild>
         {children || <Button>Adicionar Transação</Button>}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Adicionar Nova Transação</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-[600px] w-[95vw] max-w-full p-4 sm:p-6 max-h-[90vh] overflow-hidden">
+        <DialogHeader className="mb-2 sm:mb-4">
+          <DialogTitle className="text-lg sm:text-xl">Adicionar Nova Transação</DialogTitle>
+          <DialogDescription className="text-sm">
             Digite os detalhes da sua transação abaixo.
           </DialogDescription>
         </DialogHeader>

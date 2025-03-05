@@ -74,7 +74,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
   };
 
   return (
-    <form onSubmit={handleSubmit(submitForm)} className="space-y-6">
+    <form onSubmit={handleSubmit(submitForm)} className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
       <div className="space-y-4">
         <div>
           <Label className="text-base">Tipo de Transação</Label>
@@ -92,7 +92,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               <RadioGroupItem value="expense" id="expense" className="peer sr-only" />
               <Label
                 htmlFor="expense"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-3 sm:p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary text-sm sm:text-base"
               >
                 Despesa
               </Label>
@@ -101,7 +101,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               <RadioGroupItem value="income" id="income" className="peer sr-only" />
               <Label
                 htmlFor="income"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-3 sm:p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary text-sm sm:text-base"
               >
                 Receita
               </Label>
@@ -109,7 +109,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
           </RadioGroup>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="date">Data</Label>
             <Popover>
@@ -126,7 +126,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
                   {date ? format(date, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={date}
@@ -153,6 +153,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               placeholder="0,00"
               {...register("amount", { required: true, min: 0.01 })}
               disabled={isSubmitting}
+              className="w-full"
             />
             {errors.amount && (
               <p className="text-sm text-red-500">O valor é obrigatório e deve ser maior que 0</p>
@@ -167,13 +168,14 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
             placeholder="Digite a descrição"
             {...register("description", { required: true })}
             disabled={isSubmitting}
+            className="w-full"
           />
           {errors.description && (
             <p className="text-sm text-red-500">A descrição é obrigatória</p>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="category">Categoria</Label>
             <Select 
@@ -181,10 +183,10 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               defaultValue=""
               disabled={isSubmitting}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione a categoria" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper">
                 {DEFAULT_CATEGORIES[transactionType].map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
@@ -204,10 +206,10 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               defaultValue=""
               disabled={isSubmitting}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione a conta" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper">
                 {DEFAULT_ACCOUNTS.map((account) => (
                   <SelectItem key={account} value={account}>
                     {account}
@@ -228,10 +230,10 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
             defaultValue="essential"
             disabled={isSubmitting}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Selecione a classe" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper">
               <SelectItem value="essential">Essencial</SelectItem>
               <SelectItem value="non-essential">Não Essencial</SelectItem>
               <SelectItem value="investment">Investimento</SelectItem>
@@ -251,7 +253,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
             onCheckedChange={setIncludeWedding}
             disabled={isSubmitting}
           />
-          <Label htmlFor="wedding">Incluir categoria de casamento</Label>
+          <Label htmlFor="wedding" className="text-sm sm:text-base">Incluir categoria de casamento</Label>
         </div>
 
         {includeWedding && (
