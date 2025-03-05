@@ -7,27 +7,27 @@ export default function ReportsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Reports</h1>
+          <h1 className="text-3xl font-bold">Relatórios</h1>
           <div className="flex space-x-2">
-            <Button variant="outline">This Month</Button>
-            <Button variant="outline">Export</Button>
+            <Button variant="outline">Este Mês</Button>
+            <Button variant="outline">Exportar</Button>
           </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Income vs Expenses</CardTitle>
-              <CardDescription>Monthly comparison for the current year</CardDescription>
+              <CardTitle>Receitas vs Despesas</CardTitle>
+              <CardDescription>Comparação mensal para o ano atual</CardDescription>
             </CardHeader>
             <CardContent className="h-80">
               <div className="flex h-full items-center justify-center">
                 <div className="text-center">
                   <p className="text-muted-foreground">
-                    Chart visualization would go here
+                    A visualização do gráfico apareceria aqui
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    (In a real app, we would use a chart library like Chart.js or Recharts)
+                    (Em um aplicativo real, usaríamos uma biblioteca de gráficos como Chart.js ou Recharts)
                   </p>
                 </div>
               </div>
@@ -36,17 +36,17 @@ export default function ReportsPage() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Spending by Category</CardTitle>
-              <CardDescription>Where your money is going</CardDescription>
+              <CardTitle>Gastos por Categoria</CardTitle>
+              <CardDescription>Para onde seu dinheiro está indo</CardDescription>
             </CardHeader>
             <CardContent className="h-80">
               <div className="flex h-full items-center justify-center">
                 <div className="text-center">
                   <p className="text-muted-foreground">
-                    Pie chart visualization would go here
+                    A visualização do gráfico de pizza apareceria aqui
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    (In a real app, we would use a chart library like Chart.js or Recharts)
+                    (Em um aplicativo real, usaríamos uma biblioteca de gráficos como Chart.js ou Recharts)
                   </p>
                 </div>
               </div>
@@ -56,35 +56,35 @@ export default function ReportsPage() {
         
         <Card>
           <CardHeader>
-            <CardTitle>Monthly Summary</CardTitle>
-            <CardDescription>Financial overview for the past 6 months</CardDescription>
+            <CardTitle>Resumo Mensal</CardTitle>
+            <CardDescription>Visão geral financeira dos últimos 6 meses</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="py-3 px-4 text-left font-medium text-sm">Month</th>
-                    <th className="py-3 px-4 text-right font-medium text-sm">Income</th>
-                    <th className="py-3 px-4 text-right font-medium text-sm">Expenses</th>
-                    <th className="py-3 px-4 text-right font-medium text-sm">Savings</th>
-                    <th className="py-3 px-4 text-right font-medium text-sm">Savings Rate</th>
+                    <th className="py-3 px-4 text-left font-medium text-sm">Mês</th>
+                    <th className="py-3 px-4 text-right font-medium text-sm">Receitas</th>
+                    <th className="py-3 px-4 text-right font-medium text-sm">Despesas</th>
+                    <th className="py-3 px-4 text-right font-medium text-sm">Economia</th>
+                    <th className="py-3 px-4 text-right font-medium text-sm">Taxa de Economia</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    { month: "January", income: 4500, expenses: 3200, savings: 1300, rate: 28.9 },
-                    { month: "February", income: 4200, expenses: 3100, savings: 1100, rate: 26.2 },
-                    { month: "March", income: 4800, expenses: 3300, savings: 1500, rate: 31.3 },
-                    { month: "April", income: 4600, expenses: 3400, savings: 1200, rate: 26.1 },
-                    { month: "May", income: 5000, expenses: 3500, savings: 1500, rate: 30.0 },
-                    { month: "June", income: 4900, expenses: 3200, savings: 1700, rate: 34.7 },
+                    { month: "Janeiro", income: 4500, expenses: 3200, savings: 1300, rate: 28.9 },
+                    { month: "Fevereiro", income: 4200, expenses: 3100, savings: 1100, rate: 26.2 },
+                    { month: "Março", income: 4800, expenses: 3300, savings: 1500, rate: 31.3 },
+                    { month: "Abril", income: 4600, expenses: 3400, savings: 1200, rate: 26.1 },
+                    { month: "Maio", income: 5000, expenses: 3500, savings: 1500, rate: 30.0 },
+                    { month: "Junho", income: 4900, expenses: 3200, savings: 1700, rate: 34.7 },
                   ].map((item, i) => (
                     <tr key={i} className="border-b">
                       <td className="py-3 px-4 text-sm font-medium">{item.month}</td>
-                      <td className="py-3 px-4 text-sm text-right">${item.income.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-right">${item.expenses.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-right">${item.savings.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-right">R${item.income.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-right">R${item.expenses.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-right">R${item.savings.toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm text-right">
                         <span className={`${item.rate >= 30 ? 'text-green-500' : 'text-amber-500'}`}>
                           {item.rate}%

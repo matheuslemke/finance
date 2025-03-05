@@ -7,6 +7,7 @@ import { ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, Loader2 } from "l
 import { useTransactions } from "@/context/transaction-context";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import { Transaction } from "@/types";
 
@@ -44,7 +45,7 @@ export default function Home() {
       <DashboardLayout>
         <div className="h-[80vh] flex flex-col items-center justify-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-lg text-muted-foreground">Loading your financial data...</p>
+          <p className="text-lg text-muted-foreground">Carregando seus dados financeiros...</p>
         </div>
       </DashboardLayout>
     );
@@ -54,53 +55,53 @@ export default function Home() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <h1 className="text-3xl font-bold">Painel</h1>
           <AddTransactionDialog onTransactionAdded={handleAddTransaction} />
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
+              <CardTitle className="text-sm font-medium">Saldo Total</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalBalance.toFixed(2)}</div>
+              <div className="text-2xl font-bold">R${totalBalance.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
-                {totalBalance >= 0 ? "You're doing great!" : "Time to cut back on expenses"}
+                {totalBalance >= 0 ? "Você está indo bem!" : "Hora de reduzir as despesas"}
               </p>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Income</CardTitle>
+              <CardTitle className="text-sm font-medium">Receitas</CardTitle>
               <ArrowUpRight className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalIncome.toFixed(2)}</div>
+              <div className="text-2xl font-bold">R${totalIncome.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
-                {transactions.filter(t => t.type === "income").length} income transactions
+                {transactions.filter(t => t.type === "income").length} transações de receita
               </p>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Expenses</CardTitle>
+              <CardTitle className="text-sm font-medium">Despesas</CardTitle>
               <ArrowDownRight className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalExpenses.toFixed(2)}</div>
+              <div className="text-2xl font-bold">R${totalExpenses.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
-                {transactions.filter(t => t.type === "expense").length} expense transactions
+                {transactions.filter(t => t.type === "expense").length} transações de despesa
               </p>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Savings Rate</CardTitle>
+              <CardTitle className="text-sm font-medium">Taxa de Economia</CardTitle>
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -111,8 +112,8 @@ export default function Home() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {totalIncome > 0 && (totalIncome - totalExpenses) / totalIncome > 0.2 
-                  ? "Great savings rate!" 
-                  : "Try to save more"}
+                  ? "Ótima taxa de economia!" 
+                  : "Tente economizar mais"}
               </p>
             </CardContent>
           </Card>
@@ -121,8 +122,8 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Transactions</CardTitle>
-              <CardDescription>Your recent financial activity</CardDescription>
+              <CardTitle>Transações Recentes</CardTitle>
+              <CardDescription>Sua atividade financeira recente</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -140,24 +141,24 @@ export default function Home() {
                         <div>
                           <p className="font-medium">{transaction.description}</p>
                           <p className="text-xs text-muted-foreground">
-                            {format(transaction.date, "dd MMM yyyy")}
+                            {format(transaction.date, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}
                           </p>
                         </div>
                       </div>
                       <p className={`font-medium ${transaction.type === "expense" ? 'text-red-500' : 'text-green-500'}`}>
-                        {transaction.type === "expense" ? '-' : '+'}${transaction.amount.toFixed(2)}
+                        {transaction.type === "expense" ? '-' : '+'}R${transaction.amount.toFixed(2)}
                       </p>
                     </div>
                   ))
                 ) : (
                   <div className="py-6 text-center text-muted-foreground">
-                    No transactions yet. Add one to get started.
+                    Nenhuma transação ainda. Adicione uma para começar.
                   </div>
                 )}
               </div>
               <div className="mt-4">
                 <Link href="/transactions">
-                  <Button variant="outline" className="w-full">View All Transactions</Button>
+                  <Button variant="outline" className="w-full">Ver Todas as Transações</Button>
                 </Link>
               </div>
             </CardContent>
@@ -165,8 +166,8 @@ export default function Home() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Upcoming Bills</CardTitle>
-              <CardDescription>Bills due in the next 30 days</CardDescription>
+              <CardTitle>Contas Futuras</CardTitle>
+              <CardDescription>Contas a vencer nos próximos 30 dias</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -176,23 +177,23 @@ export default function Home() {
                       <div>
                         <p className="font-medium">{bill.description}</p>
                         <p className="text-xs text-muted-foreground">
-                          Due on {format(bill.date, "dd MMM yyyy")}
+                          Vence em {format(bill.date, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}
                         </p>
                       </div>
                       <p className="font-medium">
-                        ${bill.amount.toFixed(2)}
+                        R${bill.amount.toFixed(2)}
                       </p>
                     </div>
                   ))
                 ) : (
                   <div className="py-6 text-center text-muted-foreground">
-                    No upcoming bills.
+                    Nenhuma conta futura.
                   </div>
                 )}
               </div>
               <div className="mt-4">
                 <AddTransactionDialog onTransactionAdded={handleAddTransaction}>
-                  <Button variant="outline" className="w-full">Add New Bill</Button>
+                  <Button variant="outline" className="w-full">Adicionar Nova Conta</Button>
                 </AddTransactionDialog>
               </div>
             </CardContent>

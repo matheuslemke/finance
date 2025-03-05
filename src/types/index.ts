@@ -21,45 +21,45 @@ export interface Transaction {
 
 export const DEFAULT_CATEGORIES = {
   income: [
-    "Salary",
+    "Salário",
     "Freelance",
-    "Investments",
-    "Gifts",
-    "Other Income"
+    "Investimentos",
+    "Presentes",
+    "Outras Receitas"
   ],
   expense: [
-    "Housing",
-    "Food",
-    "Transportation",
-    "Utilities",
-    "Healthcare",
-    "Entertainment",
-    "Shopping",
-    "Education",
-    "Personal Care",
-    "Debt",
-    "Savings",
-    "Other Expenses"
+    "Moradia",
+    "Alimentação",
+    "Transporte",
+    "Serviços",
+    "Saúde",
+    "Entretenimento",
+    "Compras",
+    "Educação",
+    "Cuidados Pessoais",
+    "Dívidas",
+    "Poupança",
+    "Outras Despesas"
   ]
 };
 
 export const DEFAULT_ACCOUNTS = [
-  "Cash",
-  "Checking Account",
-  "Savings Account",
-  "Credit Card",
-  "Investment Account"
+  "Dinheiro",
+  "Conta Corrente",
+  "Conta Poupança",
+  "Cartão de Crédito",
+  "Conta de Investimento"
 ];
 
 export const DEFAULT_WEDDING_CATEGORIES = [
-  "Venue",
-  "Catering",
-  "Photography",
-  "Attire",
-  "Decorations",
-  "Music",
-  "Invitations",
-  "Gifts",
-  "Transportation",
-  "Honeymoon"
+  "Local",
+  "Buffet",
+  "Fotografia",
+  "Vestuário",
+  "Decoração",
+  "Música",
+  "Convites",
+  "Presentes",
+  "Transporte",
+  "Lua de Mel"
 ]; 

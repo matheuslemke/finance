@@ -8,6 +8,7 @@ import { ArrowUpRight, ArrowDownRight, Search, Filter, Trash2, Loader2 } from "l
 import { useTransactions } from "@/context/transaction-context";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useState } from "react";
 import { TransactionClass } from "@/types";
 
@@ -23,8 +24,17 @@ export default function TransactionsPage() {
   );
 
   const getClassDisplayName = (classValue: TransactionClass | undefined): string => {
-    if (!classValue) return "Unknown";
-    return classValue.charAt(0).toUpperCase() + classValue.slice(1);
+    if (!classValue) return "Desconhecido";
+    
+    const classNames: Record<TransactionClass, string> = {
+      "essential": "Essencial",
+      "non-essential": "Não Essencial",
+      "investment": "Investimento",
+      "income": "Receita",
+      "business": "Negócio"
+    };
+    
+    return classNames[classValue] || classValue.charAt(0).toUpperCase() + classValue.slice(1);
   };
 
   const getClassStyling = (classValue: TransactionClass | undefined): string => {
@@ -59,7 +69,7 @@ export default function TransactionsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Transactions</h1>
+          <h1 className="text-3xl font-bold">Transações</h1>
           <AddTransactionDialog onTransactionAdded={addTransaction} />
         </div>
         
@@ -67,15 +77,15 @@ export default function TransactionsPage() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>All Transactions</CardTitle>
-                <CardDescription>A list of all your transactions</CardDescription>
+                <CardTitle>Todas as Transações</CardTitle>
+                <CardDescription>Uma lista de todas as suas transações</CardDescription>
               </div>
               <div className="flex space-x-2">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Search..."
+                    placeholder="Pesquisar..."
                     className="pl-8 w-[200px]"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -91,7 +101,7 @@ export default function TransactionsPage() {
             {loading ? (
               <div className="flex justify-center items-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-2 text-muted-foreground">Loading transactions...</span>
+                <span className="ml-2 text-muted-foreground">Carregando transações...</span>
               </div>
             ) : (
               <>
@@ -99,13 +109,13 @@ export default function TransactionsPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="py-3 px-4 text-left font-medium text-sm">Date</th>
-                        <th className="py-3 px-4 text-left font-medium text-sm">Description</th>
-                        <th className="py-3 px-4 text-left font-medium text-sm">Category</th>
-                        <th className="py-3 px-4 text-left font-medium text-sm">Account</th>
-                        <th className="py-3 px-4 text-left font-medium text-sm">Class</th>
-                        <th className="py-3 px-4 text-right font-medium text-sm">Amount</th>
-                        <th className="py-3 px-4 text-right font-medium text-sm">Actions</th>
+                        <th className="py-3 px-4 text-left font-medium text-sm">Data</th>
+                        <th className="py-3 px-4 text-left font-medium text-sm">Descrição</th>
+                        <th className="py-3 px-4 text-left font-medium text-sm">Categoria</th>
+                        <th className="py-3 px-4 text-left font-medium text-sm">Conta</th>
+                        <th className="py-3 px-4 text-left font-medium text-sm">Classe</th>
+                        <th className="py-3 px-4 text-right font-medium text-sm">Valor</th>
+                        <th className="py-3 px-4 text-right font-medium text-sm">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -141,7 +151,7 @@ export default function TransactionsPage() {
                                       : "text-red-500"
                                   }
                                 >
-                                  {transaction.type === "income" ? "+" : "-"}$
+                                  {transaction.type === "income" ? "+" : "-"}R$
                                   {transaction.amount.toFixed(2)}
                                 </span>
                               </div>
@@ -165,7 +175,7 @@ export default function TransactionsPage() {
                       ) : (
                         <tr>
                           <td colSpan={7} className="py-6 text-center text-muted-foreground">
-                            {searchTerm ? "No transactions found matching your search." : "No transactions yet. Add one to get started."}
+                            {searchTerm ? "Nenhuma transação encontrada para sua pesquisa." : "Nenhuma transação ainda. Adicione uma para começar."}
                           </td>
                         </tr>
                       )}
@@ -175,7 +185,7 @@ export default function TransactionsPage() {
                 {filteredTransactions.length > 0 && (
                   <div className="flex items-center justify-between mt-4">
                     <p className="text-sm text-muted-foreground">
-                      Showing {filteredTransactions.length} of {transactions.length} transactions
+                      Mostrando {filteredTransactions.length} de {transactions.length} transações
                     </p>
                   </div>
                 )}

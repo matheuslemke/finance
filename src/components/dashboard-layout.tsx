@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { Home, PieChart, Wallet, Settings, LogOut } from "lucide-react";
 
 const navItems = [
-  { name: "Dashboard", href: "/", icon: Home },
-  { name: "Transactions", href: "/transactions", icon: Wallet },
-  { name: "Reports", href: "/reports", icon: PieChart },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Painel", href: "/", icon: Home },
+  { name: "Transações", href: "/transactions", icon: Wallet },
+  { name: "Relatórios", href: "/reports", icon: PieChart },
+  { name: "Configurações", href: "/settings", icon: Settings },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -18,7 +18,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-gray-50">
       <aside className="w-64 bg-white border-r border-gray-200">
         <div className="p-6">
-          <h1 className="text-2xl font-bold text-gray-900">Finance App</h1>
+          <h1 className="text-2xl font-bold text-gray-900">App de Finanças</h1>
         </div>
         <nav className="mt-6 px-3 space-y-1">
           {navItems.map((item) => {
@@ -46,7 +46,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="absolute bottom-0 w-64 p-4 border-t border-gray-200">
           <button className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900 w-full">
             <LogOut className="mr-3 h-5 w-5 text-gray-400" />
-            Logout
+            Sair
           </button>
         </div>
       </aside>

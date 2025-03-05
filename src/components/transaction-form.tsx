@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
     <form onSubmit={handleSubmit(submitForm)} className="space-y-6">
       <div className="space-y-4">
         <div>
-          <Label className="text-base">Transaction Type</Label>
+          <Label className="text-base">Tipo de Transação</Label>
           <RadioGroup 
             defaultValue="expense" 
             className="grid grid-cols-2 gap-4 mt-2"
@@ -93,7 +94,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
                 htmlFor="expense"
                 className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
               >
-                Expense
+                Despesa
               </Label>
             </div>
             <div>
@@ -102,7 +103,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
                 htmlFor="income"
                 className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
               >
-                Income
+                Receita
               </Label>
             </div>
           </RadioGroup>
@@ -110,7 +111,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="date">Data</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -122,7 +123,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
                   disabled={isSubmitting}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  {date ? format(date, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -137,50 +138,51 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
                   }}
                   initialFocus
                   disabled={isSubmitting}
+                  locale={ptBR}
                 />
               </PopoverContent>
             </Popover>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
+            <Label htmlFor="amount">Valor</Label>
             <Input
               id="amount"
               type="number"
               step="0.01"
-              placeholder="0.00"
+              placeholder="0,00"
               {...register("amount", { required: true, min: 0.01 })}
               disabled={isSubmitting}
             />
             {errors.amount && (
-              <p className="text-sm text-red-500">Amount is required and must be greater than 0</p>
+              <p className="text-sm text-red-500">O valor é obrigatório e deve ser maior que 0</p>
             )}
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
+          <Label htmlFor="description">Descrição</Label>
           <Input
             id="description"
-            placeholder="Enter description"
+            placeholder="Digite a descrição"
             {...register("description", { required: true })}
             disabled={isSubmitting}
           />
           {errors.description && (
-            <p className="text-sm text-red-500">Description is required</p>
+            <p className="text-sm text-red-500">A descrição é obrigatória</p>
           )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="category">Categoria</Label>
             <Select 
               onValueChange={(value) => setValue("category", value)} 
               defaultValue=""
               disabled={isSubmitting}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder="Selecione a categoria" />
               </SelectTrigger>
               <SelectContent>
                 {DEFAULT_CATEGORIES[transactionType].map((category) => (
@@ -191,19 +193,19 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               </SelectContent>
             </Select>
             {errors.category && (
-              <p className="text-sm text-red-500">Category is required</p>
+              <p className="text-sm text-red-500">A categoria é obrigatória</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="account">Account</Label>
+            <Label htmlFor="account">Conta</Label>
             <Select 
               onValueChange={(value) => setValue("account", value)} 
               defaultValue=""
               disabled={isSubmitting}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select account" />
+                <SelectValue placeholder="Selecione a conta" />
               </SelectTrigger>
               <SelectContent>
                 {DEFAULT_ACCOUNTS.map((account) => (
@@ -214,31 +216,31 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               </SelectContent>
             </Select>
             {errors.account && (
-              <p className="text-sm text-red-500">Account is required</p>
+              <p className="text-sm text-red-500">A conta é obrigatória</p>
             )}
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="class">Class</Label>
+          <Label htmlFor="class">Classe</Label>
           <Select 
             onValueChange={(value) => setValue("class", value as TransactionClass)} 
             defaultValue="essential"
             disabled={isSubmitting}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select class" />
+              <SelectValue placeholder="Selecione a classe" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="essential">Essential</SelectItem>
-              <SelectItem value="non-essential">Non-Essential</SelectItem>
-              <SelectItem value="investment">Investment</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="business">Business</SelectItem>
+              <SelectItem value="essential">Essencial</SelectItem>
+              <SelectItem value="non-essential">Não Essencial</SelectItem>
+              <SelectItem value="investment">Investimento</SelectItem>
+              <SelectItem value="income">Receita</SelectItem>
+              <SelectItem value="business">Negócio</SelectItem>
             </SelectContent>
           </Select>
           {errors.class && (
-            <p className="text-sm text-red-500">Class is required</p>
+            <p className="text-sm text-red-500">A classe é obrigatória</p>
           )}
         </div>
 
@@ -249,19 +251,19 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
             onCheckedChange={setIncludeWedding}
             disabled={isSubmitting}
           />
-          <Label htmlFor="wedding">Include in Wedding Budget</Label>
+          <Label htmlFor="wedding">Incluir categoria de casamento</Label>
         </div>
 
         {includeWedding && (
           <div className="space-y-2">
-            <Label htmlFor="weddingCategory">Wedding Category</Label>
+            <Label htmlFor="weddingCategory">Categoria de Casamento</Label>
             <Select 
               onValueChange={(value) => setValue("weddingCategory", value)} 
               defaultValue=""
               disabled={isSubmitting}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select wedding category" />
+                <SelectValue placeholder="Selecione a categoria de casamento" />
               </SelectTrigger>
               <SelectContent>
                 {DEFAULT_WEDDING_CATEGORIES.map((category) => (
@@ -272,7 +274,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               </SelectContent>
             </Select>
             {errors.weddingCategory && (
-              <p className="text-sm text-red-500">Wedding category is required</p>
+              <p className="text-sm text-red-500">A categoria de casamento é obrigatória</p>
             )}
           </div>
         )}
@@ -286,17 +288,17 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            Cancel
+            Cancelar
           </Button>
         )}
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              Salvando...
             </>
           ) : (
-            "Save Transaction"
+            "Salvar Transação"
           )}
         </Button>
       </div>
