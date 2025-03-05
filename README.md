@@ -11,6 +11,7 @@ A modern finance application built with Next.js, Shadcn UI, Tailwind CSS, and Su
 - **Reports**: Visualize your financial data with charts and statistics
 - **Settings**: Manage your profile and application preferences
 - **Database**: Store your transactions in Supabase
+- **Theme**: Toggle between light and dark mode
 
 ## Tech Stack
 
@@ -19,6 +20,7 @@ A modern finance application built with Next.js, Shadcn UI, Tailwind CSS, and Su
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
 - [TypeScript](https://www.typescriptlang.org/) - Typed JavaScript
 - [Supabase](https://supabase.com/) - Open source Firebase alternative
+- [next-themes](https://github.com/pacocoursey/next-themes) - Theme management for Next.js
 
 ## Getting Started
 
@@ -128,6 +130,8 @@ finance/
 │   │   ├── ui/               # Shadcn UI components
 │   │   ├── dashboard-layout.tsx # Dashboard layout component
 │   │   ├── transaction-form.tsx # Transaction form component
+│   │   ├── theme-provider.tsx # Theme provider component
+│   │   ├── theme-toggle.tsx  # Theme toggle component
 │   │   └── add-transaction-dialog.tsx # Dialog for adding transactions
 │   ├── context/              # React context
 │   │   ├── transaction-context.tsx # Transaction context provider

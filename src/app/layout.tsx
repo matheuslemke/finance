@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TransactionProvider } from "@/context/transaction-context";
 import { CategoryProvider } from "@/context/category-context";
 import { AccountProvider } from "@/context/account-context";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,18 +28,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AccountProvider>
-          <CategoryProvider>
-            <TransactionProvider>
-              {children}
-              <Toaster />
-            </TransactionProvider>
-          </CategoryProvider>
-        </AccountProvider>
+        <ThemeProvider>
+          <AccountProvider>
+            <CategoryProvider>
+              <TransactionProvider>
+                {children}
+                <Toaster />
+              </TransactionProvider>
+            </CategoryProvider>
+          </AccountProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
