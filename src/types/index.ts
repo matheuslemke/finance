@@ -7,12 +7,22 @@ export type TransactionClass =
   | "non-essential"
   | "business";
 
+export interface Category {
+  id: string;
+  name: string;
+  type: TransactionType | "both"; // income, expense ou both
+  color?: string;
+  icon?: string;
+}
+
 export interface Transaction {
   id: string;
   type: TransactionType;
   date: Date;
   description: string;
-  category: string;
+  category: string; // Nome da categoria (para compatibilidade)
+  categoryId: string; // ID da categoria relacionada
+  categoryColor?: string; // Cor da categoria
   amount: number;
   account: string;
   weddingCategory?: string;

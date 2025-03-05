@@ -14,7 +14,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Transaction, TransactionType, TransactionClass, DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS, DEFAULT_WEDDING_CATEGORIES } from "@/types";
+import { Transaction, TransactionType, TransactionClass, DEFAULT_ACCOUNTS, DEFAULT_WEDDING_CATEGORIES } from "@/types";
+import { useCategories } from "@/context/category-context";
 
 interface TransactionFormProps {
   onSubmit: (data: Omit<Transaction, "id">) => void;
@@ -23,6 +24,7 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: TransactionFormProps) {
+  const { categories, loading: loadingCategories } = useCategories();
   const [transactionType, setTransactionType] = useState<TransactionType>("expense");
   const [includeWedding, setIncludeWedding] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
@@ -33,6 +35,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
       date: new Date(),
       description: "",
       category: "",
+      categoryId: "",
       amount: 0,
       account: "",
       class: "essential" as TransactionClass,
@@ -41,13 +44,17 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
 
   register("type", { required: true });
   register("date", { required: true });
-  register("category", { required: true });
+  register("categoryId", { required: true });
   register("account", { required: true });
   register("class", { required: true });
   register("weddingCategory", { required: includeWedding });
 
+  const filteredCategories = categories.filter(
+    category => category.type === transactionType || category.type === "both"
+  );
+
   const submitForm = (data: Partial<Omit<Transaction, "id">>) => {
-    if (!data.description || !data.category || !data.account || !data.class || !data.amount || data.amount <= 0) {
+    if (!data.description || !data.categoryId || !data.account || !data.class || !data.amount || data.amount <= 0) {
       return;
     }
 
@@ -55,11 +62,16 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
       return;
     }
 
+    // Encontrar a categoria selecionada para obter o nome e a cor
+    const selectedCategory = categories.find(cat => cat.id === data.categoryId);
+    
     const formattedData = {
       type: transactionType,
       date: date,
       description: data.description || "",
-      category: data.category || "",
+      categoryId: data.categoryId || "",
+      category: selectedCategory?.name || "",
+      categoryColor: selectedCategory?.color,
       amount: parseFloat(data.amount?.toString() || "0"),
       account: data.account || "",
       class: data.class as TransactionClass,
@@ -84,6 +96,8 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
             onValueChange={(value) => {
               setTransactionType(value as TransactionType);
               setValue("type", value as TransactionType);
+              // Limpar a categoria selecionada quando mudar o tipo
+              setValue("categoryId", "");
             }}
             value={transactionType}
             disabled={isSubmitting}
@@ -177,24 +191,43 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="category">Categoria</Label>
+            <Label htmlFor="categoryId">Categoria</Label>
             <Select 
-              onValueChange={(value) => setValue("category", value)} 
+              onValueChange={(value) => setValue("categoryId", value)} 
               defaultValue=""
-              disabled={isSubmitting}
+              disabled={isSubmitting || loadingCategories}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione a categoria" />
+                <SelectValue placeholder={loadingCategories ? "Carregando..." : "Selecione a categoria"} />
               </SelectTrigger>
               <SelectContent position="popper">
-                {DEFAULT_CATEGORIES[transactionType].map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
+                {loadingCategories ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span>Carregando categorias...</span>
+                  </div>
+                ) : filteredCategories.length > 0 ? (
+                  filteredCategories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      <div className="flex items-center">
+                        {category.color && (
+                          <div 
+                            className="w-3 h-3 rounded-full mr-2" 
+                            style={{ backgroundColor: category.color }}
+                          />
+                        )}
+                        {category.name}
+                      </div>
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="py-2 px-2 text-sm text-muted-foreground">
+                    Nenhuma categoria disponível. Adicione categorias na página de categorias.
+                  </div>
+                )}
               </SelectContent>
             </Select>
-            {errors.category && (
+            {errors.categoryId && (
               <p className="text-sm text-red-500">A categoria é obrigatória</p>
             )}
           </div>
@@ -248,12 +281,12 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
 
         <div className="flex items-center space-x-2">
           <Switch 
-            id="wedding" 
+            id="wedding"
             checked={includeWedding}
             onCheckedChange={setIncludeWedding}
             disabled={isSubmitting}
           />
-          <Label htmlFor="wedding" className="text-sm sm:text-base">Incluir categoria de casamento</Label>
+          <Label htmlFor="wedding" className="cursor-pointer">Incluir categoria de casamento</Label>
         </div>
 
         {includeWedding && (
@@ -264,10 +297,10 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               defaultValue=""
               disabled={isSubmitting}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione a categoria de casamento" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper">
                 {DEFAULT_WEDDING_CATEGORIES.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
@@ -275,7 +308,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
                 ))}
               </SelectContent>
             </Select>
-            {errors.weddingCategory && (
+            {includeWedding && errors.weddingCategory && (
               <p className="text-sm text-red-500">A categoria de casamento é obrigatória</p>
             )}
           </div>
@@ -293,14 +326,17 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
             Cancelar
           </Button>
         )}
-        <Button type="submit" disabled={isSubmitting}>
+        <Button 
+          type="submit"
+          disabled={isSubmitting}
+        >
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Salvando...
             </>
           ) : (
-            "Salvar Transação"
+            "Salvar"
           )}
         </Button>
       </div>
