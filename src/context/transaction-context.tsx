@@ -2,12 +2,15 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Transaction } from "@/types";
+import { fetchTransactions, addTransaction as addTransactionToSupabase, updateTransaction as updateTransactionInSupabase, deleteTransaction as deleteTransactionFromSupabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface TransactionContextType {
   transactions: Transaction[];
-  addTransaction: (transaction: Transaction) => void;
-  updateTransaction: (id: string, transaction: Partial<Transaction>) => void;
-  deleteTransaction: (id: string) => void;
+  loading: boolean;
+  addTransaction: (transaction: Omit<Transaction, "id">) => Promise<void>;
+  updateTransaction: (id: string, transaction: Partial<Transaction>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
@@ -24,56 +27,93 @@ interface TransactionProviderProps {
   children: ReactNode;
 }
 
-interface StoredTransaction extends Omit<Transaction, "date"> {
-  date: string;
-}
-
 export function TransactionProvider({ children }: TransactionProviderProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Load transactions from localStorage on initial render
   useEffect(() => {
-    const savedTransactions = localStorage.getItem("transactions");
-    if (savedTransactions) {
+    async function loadTransactions() {
       try {
-        const parsedTransactions = JSON.parse(savedTransactions) as StoredTransaction[];
-        // Convert string dates back to Date objects
-        const formattedTransactions = parsedTransactions.map((transaction) => ({
-          ...transaction,
-          date: new Date(transaction.date),
-        }));
-        setTransactions(formattedTransactions);
+        setLoading(true);
+        const data = await fetchTransactions();
+        setTransactions(data);
       } catch (error) {
-        console.error("Failed to parse transactions from localStorage:", error);
+        console.error("Erro ao carregar transações:", error);
+        toast.error("Não foi possível carregar as transações");
+      } finally {
+        setLoading(false);
       }
     }
+
+    loadTransactions();
   }, []);
 
-  // Save transactions to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem("transactions", JSON.stringify(transactions));
-  }, [transactions]);
-
-  const addTransaction = (transaction: Transaction) => {
-    setTransactions((prev) => [...prev, transaction]);
+  const addTransaction = async (transaction: Omit<Transaction, "id">) => {
+    try {
+      setLoading(true);
+      const newTransaction = await addTransactionToSupabase(transaction);
+      
+      if (newTransaction) {
+        setTransactions(prev => [...prev, newTransaction]);
+        toast.success("Transação adicionada com sucesso");
+      } else {
+        toast.error("Erro ao adicionar transação: Verifique os dados e tente novamente");
+      }
+    } catch (error) {
+      console.error("Erro ao adicionar transação:", error);
+      toast.error(`Erro ao adicionar transação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateTransaction = (id: string, updatedTransaction: Partial<Transaction>) => {
-    setTransactions((prev) =>
-      prev.map((transaction) =>
-        transaction.id === id
-          ? { ...transaction, ...updatedTransaction }
-          : transaction
-      )
-    );
+  const updateTransaction = async (id: string, updatedTransaction: Partial<Transaction>) => {
+    try {
+      setLoading(true);
+      const success = await updateTransactionInSupabase(id, updatedTransaction);
+      
+      if (success) {
+        setTransactions(prev =>
+          prev.map(transaction =>
+            transaction.id === id
+              ? { ...transaction, ...updatedTransaction }
+              : transaction
+          )
+        );
+        toast.success("Transação atualizada com sucesso");
+      } else {
+        toast.error("Erro ao atualizar transação");
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar transação:", error);
+      toast.error("Erro ao atualizar transação");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteTransaction = (id: string) => {
-    setTransactions((prev) => prev.filter((transaction) => transaction.id !== id));
+  const deleteTransaction = async (id: string) => {
+    try {
+      setLoading(true);
+      const success = await deleteTransactionFromSupabase(id);
+      
+      if (success) {
+        setTransactions(prev => prev.filter(transaction => transaction.id !== id));
+        toast.success("Transação excluída com sucesso");
+      } else {
+        toast.error("Erro ao excluir transação");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir transação:", error);
+      toast.error("Erro ao excluir transação");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const value = {
     transactions,
+    loading,
     addTransaction,
     updateTransaction,
     deleteTransaction,

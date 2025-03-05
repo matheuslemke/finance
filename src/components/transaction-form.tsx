@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -18,9 +18,10 @@ import { Transaction, TransactionType, TransactionClass, DEFAULT_CATEGORIES, DEF
 interface TransactionFormProps {
   onSubmit: (data: Omit<Transaction, "id">) => void;
   onCancel?: () => void;
+  isSubmitting?: boolean;
 }
 
-export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
+export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: TransactionFormProps) {
   const [transactionType, setTransactionType] = useState<TransactionType>("expense");
   const [includeWedding, setIncludeWedding] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
@@ -37,7 +38,6 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
     }
   });
 
-  // Register the fields that are managed by custom components
   register("type", { required: true });
   register("date", { required: true });
   register("category", { required: true });
@@ -46,12 +46,10 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
   register("weddingCategory", { required: includeWedding });
 
   const submitForm = (data: Partial<Omit<Transaction, "id">>) => {
-    // Validate all required fields
     if (!data.description || !data.category || !data.account || !data.class || !data.amount || data.amount <= 0) {
       return;
     }
 
-    // Validate wedding category if included
     if (includeWedding && !data.weddingCategory) {
       return;
     }
@@ -87,6 +85,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
               setValue("type", value as TransactionType);
             }}
             value={transactionType}
+            disabled={isSubmitting}
           >
             <div>
               <RadioGroupItem value="expense" id="expense" className="peer sr-only" />
@@ -120,6 +119,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
                     "w-full justify-start text-left font-normal",
                     !date && "text-muted-foreground"
                   )}
+                  disabled={isSubmitting}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "PPP") : <span>Pick a date</span>}
@@ -136,6 +136,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
                     }
                   }}
                   initialFocus
+                  disabled={isSubmitting}
                 />
               </PopoverContent>
             </Popover>
@@ -149,6 +150,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
               step="0.01"
               placeholder="0.00"
               {...register("amount", { required: true, min: 0.01 })}
+              disabled={isSubmitting}
             />
             {errors.amount && (
               <p className="text-sm text-red-500">Amount is required and must be greater than 0</p>
@@ -162,6 +164,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
             id="description"
             placeholder="Enter description"
             {...register("description", { required: true })}
+            disabled={isSubmitting}
           />
           {errors.description && (
             <p className="text-sm text-red-500">Description is required</p>
@@ -174,6 +177,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
             <Select 
               onValueChange={(value) => setValue("category", value)} 
               defaultValue=""
+              disabled={isSubmitting}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select category" />
@@ -196,6 +200,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
             <Select 
               onValueChange={(value) => setValue("account", value)} 
               defaultValue=""
+              disabled={isSubmitting}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select account" />
@@ -219,6 +224,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
           <Select 
             onValueChange={(value) => setValue("class", value as TransactionClass)} 
             defaultValue="essential"
+            disabled={isSubmitting}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select class" />
@@ -241,8 +247,9 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
             id="wedding" 
             checked={includeWedding}
             onCheckedChange={setIncludeWedding}
+            disabled={isSubmitting}
           />
-          <Label htmlFor="wedding">Include Wedding Category</Label>
+          <Label htmlFor="wedding">Include in Wedding Budget</Label>
         </div>
 
         {includeWedding && (
@@ -251,6 +258,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
             <Select 
               onValueChange={(value) => setValue("weddingCategory", value)} 
               defaultValue=""
+              disabled={isSubmitting}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select wedding category" />
@@ -263,7 +271,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
                 ))}
               </SelectContent>
             </Select>
-            {includeWedding && errors.weddingCategory && (
+            {errors.weddingCategory && (
               <p className="text-sm text-red-500">Wedding category is required</p>
             )}
           </div>
@@ -272,11 +280,25 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
 
       <div className="flex justify-end space-x-2">
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
         )}
-        <Button type="submit">Save Transaction</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save Transaction"
+          )}
+        </Button>
       </div>
     </form>
   );

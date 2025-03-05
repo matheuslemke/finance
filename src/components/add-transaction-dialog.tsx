@@ -6,25 +6,27 @@ import { Button } from "@/components/ui/button";
 import { TransactionForm } from "@/components/transaction-form";
 import { Transaction } from "@/types";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
 
 interface AddTransactionDialogProps {
-  onTransactionAdded: (transaction: Transaction) => void;
+  onTransactionAdded: (transaction: Omit<Transaction, "id">) => Promise<void>;
   children?: React.ReactNode;
 }
 
 export function AddTransactionDialog({ onTransactionAdded, children }: AddTransactionDialogProps) {
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (data: Omit<Transaction, "id">) => {
-    const newTransaction: Transaction = {
-      ...data,
-      id: uuidv4(),
-    };
-    
-    onTransactionAdded(newTransaction);
-    toast.success("Transaction added successfully");
-    setOpen(false);
+  const handleSubmit = async (data: Omit<Transaction, "id">) => {
+    try {
+      setIsSubmitting(true);
+      await onTransactionAdded(data);
+      setOpen(false);
+    } catch (error) {
+      console.error("Erro ao adicionar transação:", error);
+      toast.error("Erro ao adicionar transação");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -41,7 +43,8 @@ export function AddTransactionDialog({ onTransactionAdded, children }: AddTransa
         </DialogHeader>
         <TransactionForm 
           onSubmit={handleSubmit} 
-          onCancel={() => setOpen(false)} 
+          onCancel={() => setOpen(false)}
+          isSubmitting={isSubmitting}
         />
       </DialogContent>
     </Dialog>

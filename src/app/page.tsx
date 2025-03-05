@@ -3,16 +3,16 @@
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownRight, DollarSign, CreditCard } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, Loader2 } from "lucide-react";
 import { useTransactions } from "@/context/transaction-context";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
 import { format } from "date-fns";
 import Link from "next/link";
+import { Transaction } from "@/types";
 
 export default function Home() {
-  const { transactions } = useTransactions();
+  const { transactions, loading, addTransaction } = useTransactions();
 
-  // Calculate total balance, income, expenses, and savings
   const totalIncome = transactions
     .filter(t => t.type === "income")
     .reduce((sum, t) => sum + t.amount, 0);
@@ -23,12 +23,10 @@ export default function Home() {
   
   const totalBalance = totalIncome - totalExpenses;
   
-  // Get recent transactions (last 5)
   const recentTransactions = [...transactions]
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .slice(0, 5);
 
-  // Calculate upcoming bills (expenses with future dates)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -37,12 +35,27 @@ export default function Home() {
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(0, 4);
 
+  const handleAddTransaction = async (transaction: Omit<Transaction, "id">) => {
+    await addTransaction(transaction);
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="h-[80vh] flex flex-col items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-muted-foreground">Loading your financial data...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <AddTransactionDialog onTransactionAdded={() => {}} />
+          <AddTransactionDialog onTransactionAdded={handleAddTransaction} />
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -178,7 +191,7 @@ export default function Home() {
                 )}
               </div>
               <div className="mt-4">
-                <AddTransactionDialog onTransactionAdded={() => {}}>
+                <AddTransactionDialog onTransactionAdded={handleAddTransaction}>
                   <Button variant="outline" className="w-full">Add New Bill</Button>
                 </AddTransactionDialog>
               </div>
