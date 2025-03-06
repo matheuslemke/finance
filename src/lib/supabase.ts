@@ -22,13 +22,30 @@ export async function fetchAccounts(): Promise<Account[]> {
     return [];
   }
 
-  return data || [];
+  return (data || []).map(account => {
+    const { closing_day, due_day, credit_limit, ...rest } = account;
+    return {
+      ...rest,
+      closingDay: closing_day,
+      dueDay: due_day,
+      creditLimit: credit_limit
+    };
+  });
 }
 
 export async function addAccount(account: Omit<Account, 'id'>): Promise<Account | null> {
+  const { closingDay, dueDay, creditLimit, ...rest } = account;
+  
+  const dbAccount = {
+    ...rest,
+    closing_day: closingDay,
+    due_day: dueDay,
+    credit_limit: creditLimit
+  };
+
   const { data, error } = await supabase
     .from(accountsTable)
-    .insert([account])
+    .insert([dbAccount])
     .select()
     .single();
 
@@ -41,9 +58,18 @@ export async function addAccount(account: Omit<Account, 'id'>): Promise<Account 
 }
 
 export async function updateAccount(id: string, account: Partial<Account>): Promise<boolean> {
+  const { closingDay, dueDay, creditLimit, ...rest } = account;
+  
+  const dbAccount = {
+    ...rest,
+    ...(closingDay !== undefined && { closing_day: closingDay }),
+    ...(dueDay !== undefined && { due_day: dueDay }),
+    ...(creditLimit !== undefined && { credit_limit: creditLimit })
+  };
+
   const { error } = await supabase
     .from(accountsTable)
-    .update(account)
+    .update(dbAccount)
     .eq('id', id);
 
   if (error) {
