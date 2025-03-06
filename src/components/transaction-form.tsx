@@ -412,7 +412,7 @@ export function TransactionForm({ onSubmit, onCancel, isSubmitting = false }: Tr
               <SelectItem value="non-essential">Não Essencial</SelectItem>
               <SelectItem value="investment">Investimento</SelectItem>
               <SelectItem value="income">Receita</SelectItem>
-              <SelectItem value="business">Negócio</SelectItem>
+              <SelectItem value="business">PJ</SelectItem>
             </SelectContent>
           </Select>
           {errors.class && (

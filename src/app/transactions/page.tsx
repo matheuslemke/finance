@@ -34,7 +34,7 @@ export default function TransactionsPage() {
       "non-essential": "Não Essencial",
       "investment": "Investimento",
       "income": "Receita",
-      "business": "Negócio"
+      "business": "PJ"
     };
     
     return classNames[classValue] || classValue.charAt(0).toUpperCase() + classValue.slice(1);
