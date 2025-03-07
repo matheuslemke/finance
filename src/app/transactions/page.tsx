@@ -4,15 +4,19 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowUpRight, ArrowDownRight, Search, Filter, Trash2, Loader2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, Filter, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useTransactions } from "@/context/transaction-context";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useState } from "react";
 import { TransactionClass, Transaction } from "@/types";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Chip } from "@/components/ui/chip";
+
+type SortField = 'date' | 'category' | 'weddingCategory' | 'account' | 'class' | 'amount';
+type SortDirection = 'asc' | 'desc';
 
 export default function TransactionsPage() {
   const { transactions, loading, addTransaction, deleteTransaction } = useTransactions();
@@ -20,12 +24,65 @@ export default function TransactionsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-1 h-4 w-4" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="ml-1 h-4 w-4" /> 
+      : <ArrowDown className="ml-1 h-4 w-4" />;
+  };
 
   const filteredTransactions = transactions.filter(transaction => 
     transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
     transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
     transaction.account.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    let comparison = 0;
+    
+    switch (sortField) {
+      case 'date':
+        comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        break;
+      case 'category':
+        comparison = a.category.localeCompare(b.category);
+        break;
+      case 'weddingCategory':
+        const aWedding = a.weddingCategory || '';
+        const bWedding = b.weddingCategory || '';
+        comparison = aWedding.localeCompare(bWedding);
+        break;
+      case 'account':
+        comparison = a.account.localeCompare(b.account);
+        break;
+      case 'class':
+        const aClass = a.class || '';
+        const bClass = b.class || '';
+        comparison = aClass.localeCompare(bClass);
+        break;
+      case 'amount':
+        comparison = a.amount - b.amount;
+        break;
+      default:
+        comparison = 0;
+    }
+    
+    return sortDirection === 'asc' ? comparison : -comparison;
+  });
 
   const getClassDisplayName = (classValue: TransactionClass | undefined): string => {
     if (!classValue) return "Desconhecido";
@@ -86,7 +143,7 @@ export default function TransactionsPage() {
       <TransactionListCard className="mb-3 hover:shadow-md transition-shadow">
         <CardContent className="px-4 py-3">
           <div className="flex justify-between items-center">
-            <p className="text-sm text-muted-foreground">{format(transaction.date, "dd/MM/yyyy")}</p>
+            <p className="text-sm text-muted-foreground">{format(transaction.date, "dd/MMM/yyyy", { locale: ptBR })}</p>
             <div className="flex items-center">
               {transaction.type === "income" ? (
                 <ArrowUpRight className="mr-1 h-5 w-5 text-green-500" />
@@ -179,6 +236,18 @@ export default function TransactionsPage() {
     );
   };
 
+  const SortableTableHeader = ({ field, children }: { field: SortField, children: React.ReactNode }) => (
+    <th 
+      className="py-3 px-4 text-left font-medium text-sm cursor-pointer hover:bg-muted/70 transition-colors"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center">
+        {children}
+        {getSortIcon(field)}
+      </div>
+    </th>
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -228,25 +297,25 @@ export default function TransactionsPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b bg-muted/50">
-                          <th className="py-3 px-4 text-left font-medium text-sm">Data</th>
+                          <SortableTableHeader field="date">Data</SortableTableHeader>
                           <th className="py-3 px-4 text-left font-medium text-sm">Descrição</th>
-                          <th className="py-3 px-4 text-left font-medium text-sm">Categoria</th>
-                          <th className="py-3 px-4 text-left font-medium text-sm">Cat. Casamento</th>
-                          <th className="py-3 px-4 text-left font-medium text-sm">Conta</th>
-                          <th className="py-3 px-4 text-left font-medium text-sm">Classe</th>
-                          <th className="py-3 px-4 text-right font-medium text-sm">Valor</th>
+                          <SortableTableHeader field="category">Categoria</SortableTableHeader>
+                          <SortableTableHeader field="weddingCategory">Cat. Casamento</SortableTableHeader>
+                          <SortableTableHeader field="account">Conta</SortableTableHeader>
+                          <SortableTableHeader field="class">Classe</SortableTableHeader>
+                          <SortableTableHeader field="amount">Valor</SortableTableHeader>
                           <th className="py-3 px-4 text-right font-medium text-sm">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredTransactions.length > 0 ? (
-                          filteredTransactions.map((transaction) => {
+                        {sortedTransactions.length > 0 ? (
+                          sortedTransactions.map((transaction) => {
                             const accountStyle = getAccountChipStyle(transaction.accountColor);
                             
                             return (
                               <tr key={transaction.id} className="border-b">
                                 <td className="py-3 px-4 text-sm">
-                                  {format(transaction.date, "dd/MM/yyyy")}
+                                  {format(transaction.date, "dd/MMM/yyyy", { locale: ptBR })}
                                 </td>
                                 <td className="py-3 px-4 text-sm max-w-[200px] truncate">{transaction.description}</td>
                                 <td className="py-3 px-4 text-sm">
@@ -336,8 +405,8 @@ export default function TransactionsPage() {
                 </div>
 
                 <div className="md:hidden space-y-3">
-                  {filteredTransactions.length > 0 ? (
-                    filteredTransactions.map((transaction) => (
+                  {sortedTransactions.length > 0 ? (
+                    sortedTransactions.map((transaction) => (
                       <TransactionCard key={transaction.id} transaction={transaction} />
                     ))
                   ) : (
@@ -347,10 +416,10 @@ export default function TransactionsPage() {
                   )}
                 </div>
 
-                {filteredTransactions.length > 0 && (
+                {sortedTransactions.length > 0 && (
                   <div className="flex items-center justify-center sm:justify-between mt-4">
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      Mostrando {filteredTransactions.length} de {transactions.length} transações
+                      Mostrando {sortedTransactions.length} de {transactions.length} transações
                     </p>
                   </div>
                 )}
@@ -378,7 +447,7 @@ export default function TransactionsPage() {
                 </span>
                 <span className="mx-2 text-muted-foreground">•</span>
                 <span className="text-sm text-muted-foreground">
-                  {format(transactionToDelete.date, "dd/MM/yyyy")}
+                  {format(transactionToDelete.date, "dd/MMM/yyyy", { locale: ptBR })}
                 </span>
               </div>
             </div>
