@@ -107,7 +107,7 @@ async function processCsv(month, year) {
       }
       
       const validDay = isNaN(day) || day < 1 || day > 31 ? 1 : day;
-      const timestamptz = `${year}-${month.toString().padStart(2, '0')}-${validDay.toString().padStart(2, '0')}T00:00:00.000Z`;
+      const timestamptz = `${year}-${month.toString().padStart(2, '0')}-${validDay.toString().padStart(2, '0')}T03:00:00.000Z`;
       
       const weddingCategory = row.wedding_category === '-' ? '' : row.wedding_category;
       
