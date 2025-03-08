@@ -1,0 +1,9 @@
+---
+description: Do not use comments.
+globs: 
+---
+
+# Your rule content
+
+- Do not write comments in the code.
+- Write legible code, instead of commenting
