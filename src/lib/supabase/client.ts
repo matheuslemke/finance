@@ -8,3 +8,4 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const transactionsTable = 'transactions';
 export const categoriesTable = 'categories';
 export const accountsTable = 'accounts'; 
+export const invoicesTable = 'invoices';
