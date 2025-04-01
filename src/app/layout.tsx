@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TransactionProvider } from "@/context/transaction-context";
 import { CategoryProvider } from "@/context/category-context";
 import { AccountProvider } from "@/context/account-context";
+import { InvoiceProvider } from "@/context/invoice-context";
 import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
@@ -36,8 +37,10 @@ export default function RootLayout({
           <AccountProvider>
             <CategoryProvider>
               <TransactionProvider>
-                {children}
-                <Toaster />
+                <InvoiceProvider>
+                  {children}
+                  <Toaster />
+                </InvoiceProvider>
               </TransactionProvider>
             </CategoryProvider>
           </AccountProvider>

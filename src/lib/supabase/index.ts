@@ -1,4 +1,4 @@
-export { supabase, transactionsTable, categoriesTable, accountsTable } from './client';
+export { supabase, transactionsTable, categoriesTable, accountsTable, invoicesTable } from './client';
 
 export {
   fetchAccounts,
@@ -19,4 +19,9 @@ export {
   addTransaction,
   updateTransaction,
   deleteTransaction
-} from './transactions'; 
+} from './transactions';
+
+export {
+  fetchInvoices,
+  fetchInvoiceById
+} from './invoices'; 

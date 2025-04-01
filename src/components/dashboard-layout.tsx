@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PieChart, Wallet, Settings, LogOut, Menu, X, Tag, CreditCard } from "lucide-react";
+import { Home, PieChart, Wallet, Settings, LogOut, Menu, X, Tag, CreditCard, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 const navItems = [
   { name: "Painel", href: "/", icon: Home },
   { name: "Transações", href: "/transactions", icon: Wallet },
+  { name: "Faturas", href: "/invoices", icon: FileText },
   { name: "Contas", href: "/accounts", icon: CreditCard },
   { name: "Categorias", href: "/categories", icon: Tag },
   { name: "Relatórios", href: "/reports", icon: PieChart },

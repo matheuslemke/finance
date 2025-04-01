@@ -50,6 +50,17 @@ export interface Transaction {
   weddingCategory?: string;
   class: TransactionClass;
   amount: number;
+  invoice_id?: string; // Reference to invoice
+}
+
+export interface Invoice {
+  id: string;
+  account_id: string;
+  account?: Account;
+  month: number;
+  year: number;
+  due_day: Date;
+  transactions?: Transaction[];
 }
 
 export const DEFAULT_CATEGORIES = {
