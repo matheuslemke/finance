@@ -271,11 +271,18 @@ export default function TransactionsPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h1 className="text-2xl sm:text-3xl font-bold">Transações</h1>
-          <AddTransactionDialog onTransactionAdded={addTransaction}>
-            <Button className="w-full sm:w-auto">
-              <span className="mr-1">Adicionar Transação</span>
+          <div className="flex gap-2 flex-col sm:flex-row w-full sm:w-auto">
+            <AddTransactionDialog onTransactionAdded={addTransaction}>
+              <Button className="w-full sm:w-auto">
+                <span className="mr-1">Adicionar Transação</span>
+              </Button>
+            </AddTransactionDialog>
+            <Button variant="outline" className="w-full sm:w-auto" asChild>
+              <a href="/transactions/import">
+                <span className="mr-1">Importar Transações</span>
+              </a>
             </Button>
-          </AddTransactionDialog>
+          </div>
         </div>
         
         <Card>
