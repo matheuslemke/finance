@@ -1,0 +1,156 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# React Development Rules
+
+## State Management
+
+1. **State Updates**
+   - When updating state based on previous state, always use the updater function:
+     ```jsx
+     setCount(prevCount => prevCount + 1);
+     ```
+   - For simple updates not depending on previous state, direct value is acceptable:
+     ```jsx
+     setCount(5);
+     ```
+
+2. **State Objects**
+   - When updating objects in state, always spread previous state:
+     ```jsx
+     setUser(prevUser => ({ ...prevUser, name: 'New Name' }));
+     ```
+   - Never mutate state directly:
+     ```jsx
+     // Wrong:
+     user.name = 'New Name';
+     setUser(user);
+     ```
+
+3. **Derived State**
+   - Avoid separate state for values that can be derived:
+     ```jsx
+     // Instead of:
+     const [fullName, setFullName] = useState('');
+     useEffect(() => {
+       setFullName(`${firstName} ${lastName}`);
+     }, [firstName, lastName]);
+     
+     // Do:
+     const fullName = `${firstName} ${lastName}`;
+     ```
+
+## Hooks Usage
+
+4. **Hook Rules**
+   - Never call hooks conditionally or in loops
+   - Always call hooks at the top level of your component
+   - Maintain consistent hook order between renders
+
+5. **useEffect**
+   - Always include cleanup for subscriptions, intervals, and event listeners:
+     ```jsx
+     useEffect(() => {
+       const id = setInterval(() => {}, 1000);
+       return () => clearInterval(id);
+     }, []);
+     ```
+   - For async operations, handle race conditions:
+     ```jsx
+     useEffect(() => {
+       const controller = new AbortController();
+       fetch(url, { signal: controller.signal })
+         .then(/* ... */);
+       return () => controller.abort();
+     }, [dependency]);
+     ```
+
+6. **Custom Hooks**
+   - Extract reusable logic into custom hooks (prefix with `use`)
+   - Follow the same rules as built-in hooks
+
+## Component Design
+
+7. **Conditional Rendering**
+   - Avoid early returns before hooks
+   - Prefer conditional rendering within the return:
+     ```jsx
+     return (
+       {loading ? <Loader /> : <Content />}
+     );
+     ```
+
+8. **Forms**
+   - Use single state object for form data:
+     ```jsx
+     const [form, setForm] = useState({ email: '', password: '' });
+     const handleChange = (e) => {
+       setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+     };
+     ```
+
+9. **Initial State**
+   - Initialize state properly (use `null` for intentional empty state)
+   - Handle loading states explicitly:
+     ```jsx
+     const [data, setData] = useState(null);
+     const [loading, setLoading] = useState(true);
+     ```
+
+## Performance
+
+10. **Primitives vs Objects**
+    - Prefer primitives in dependency arrays
+    - For objects, consider using specific properties:
+      ```jsx
+      useEffect(() => {
+        // Do something
+      }, [user.id]); // Instead of [user]
+      ```
+
+11. **Server vs Client Components**
+    - Mark components with browser APIs as client components:
+      ```jsx
+      'use client';
+      // Component using useState, useEffect, window, etc.
+      ```
+
+## Data Fetching
+
+12. **Avoid useEffect for Data Fetching**
+    - Prefer dedicated libraries (React Query, SWR) or framework solutions
+    - If using useEffect:
+      - Handle loading/error states
+      - Implement cleanup/abort
+      - Consider caching
+
+## TypeScript (Optional)
+
+13. **Type Inference**
+    - Let TypeScript infer types when possible:
+      ```tsx
+      const [count, setCount] = useState(0); // Inferred as number
+      ```
+    - Explicitly type complex state:
+      ```tsx
+      interface Post {
+        id: number;
+        title: string;
+        body: string;
+      }
+      const [post, setPost] = useState<Post | null>(null);
+      ```
+
+## Best Practices
+
+14. **Code Organization**
+    - Keep components small and focused
+    - Separate concerns with custom hooks
+    - Colocate related files
+
+15. **JavaScript Fundamentals**
+    - Master closures and reference types
+    - Understand the event loop
+    - Know array/object methods
