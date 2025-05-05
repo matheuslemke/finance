@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
 import { TransactionProvider } from "@/context/transaction-context";
 import { CategoryProvider } from "@/context/category-context";
 import { AccountProvider } from "@/context/account-context";
 import { InvoiceProvider } from "@/context/invoice-context";
 import { ThemeProvider } from "@/components/theme-provider";
+import { InvestmentsProvider } from "@/contexts/InvestmentsContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,8 +20,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "App de Finanças",
-  description: "Gerencie suas finanças pessoais com facilidade",
+  title: "Finance",
+  description: "Controle suas finanças pessoais",
 };
 
 export default function RootLayout({
@@ -38,8 +39,10 @@ export default function RootLayout({
             <CategoryProvider>
               <TransactionProvider>
                 <InvoiceProvider>
-                  {children}
-                  <Toaster />
+                  <InvestmentsProvider>
+                    {children}
+                    <Toaster />
+                  </InvestmentsProvider>
                 </InvoiceProvider>
               </TransactionProvider>
             </CategoryProvider>

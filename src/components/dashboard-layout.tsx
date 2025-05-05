@@ -2,19 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PieChart, Wallet, Settings, LogOut, Menu, X, Tag, CreditCard, FileText } from "lucide-react";
+import { Home, PieChart, Wallet, Settings, LogOut, Menu, X, Tag, CreditCard, FileText, ArrowDownUp, BarChart3, ChevronDown, LineChart, DollarSign, Heart, PiggyBank } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { cn } from "@/lib/utils";
 
-const navItems = [
-  { name: "Painel", href: "/", icon: Home },
-  { name: "Transações", href: "/transactions", icon: Wallet },
-  { name: "Faturas", href: "/invoices", icon: FileText },
-  { name: "Contas", href: "/accounts", icon: CreditCard },
-  { name: "Categorias", href: "/categories", icon: Tag },
-  { name: "Relatórios", href: "/reports", icon: PieChart },
-  { name: "Configurações", href: "/settings", icon: Settings },
+const links = [
+  { href: "/", label: "Dashboard", icon: Home },
+  { href: "/transactions", label: "Transações", icon: ArrowDownUp },
+  { href: "/accounts", label: "Contas", icon: Wallet },
+  { href: "/investments", label: "Investimentos", icon: LineChart },
+  { href: "/investments/dividends", label: "Dividendos", icon: DollarSign },
+  { href: "/investments/analytics", label: "Análise", icon: BarChart3 },
+  { href: "/wedding", label: "Casamento", icon: Heart },
+  { href: "/goals", label: "Objetivos", icon: PiggyBank },
+  { href: "/categories", label: "Categorias", icon: PieChart },
+  { href: "/reports", label: "Relatórios", icon: BarChart3 },
+  { href: "/invoices", label: "Faturas", icon: CreditCard },
+  { href: "/settings", label: "Configurações", icon: Settings },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -63,25 +69,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <ThemeToggle />
         </div>
         <nav className="mt-6 px-3 space-y-1">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
+          {links.map((link) => {
+            const LinkIcon = link.icon;
+            const isActive = pathname === link.href;
             return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                  isActive
-                    ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
-                }`}
+              <Button 
+                key={link.href} 
+                variant={isActive ? "secondary" : "ghost"} 
+                className="justify-start" 
+                asChild
               >
-                <item.icon
-                  className={`mr-3 h-5 w-5 ${
-                    isActive ? "text-gray-500 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
-                  }`}
-                />
-                {item.name}
-              </Link>
+                <Link href={link.href}>
+                  <LinkIcon className="mr-3 h-5 w-5" />
+                  {link.label}
+                </Link>
+              </Button>
             );
           })}
         </nav>
@@ -112,26 +114,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <nav className="flex-1 p-4 space-y-2">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
+              {links.map((link) => {
+                const LinkIcon = link.icon;
+                const isActive = pathname === link.href;
                 return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`flex items-center px-3 py-3 text-base font-medium rounded-md ${
-                      isActive
-                        ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
+                  <Button 
+                    key={link.href} 
+                    variant={isActive ? "secondary" : "ghost"} 
+                    className="justify-start" 
+                    asChild
                   >
-                    <item.icon
-                      className={`mr-3 h-5 w-5 ${
-                        isActive ? "text-gray-500 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"
-                      }`}
-                    />
-                    {item.name}
-                  </Link>
+                    <Link href={link.href}>
+                      <LinkIcon className="mr-3 h-5 w-5" />
+                      {link.label}
+                    </Link>
+                  </Button>
                 );
               })}
             </nav>
