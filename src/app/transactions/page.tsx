@@ -4,10 +4,10 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowUpRight, ArrowDownRight, Search, Filter, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, Filter, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTransactions } from "@/context/transaction-context";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
 import { TransactionClass, Transaction } from "@/types";
@@ -26,6 +26,7 @@ export default function TransactionsPage() {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -45,11 +46,27 @@ export default function TransactionsPage() {
       : <ArrowDown className="ml-1 h-4 w-4" />;
   };
 
-  const filteredTransactions = transactions.filter(transaction => 
-    transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    transaction.account.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const previousMonth = () => {
+    setCurrentMonth(prevMonth => subMonths(prevMonth, 1));
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(prevMonth => addMonths(prevMonth, 1));
+  };
+
+  const filteredTransactions = transactions.filter(transaction => {
+    const transactionDate = new Date(transaction.date);
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    
+    const isInSelectedMonth = transactionDate >= monthStart && transactionDate <= monthEnd;
+    const matchesSearch = 
+      transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.account.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return isInSelectedMonth && (searchTerm === "" || matchesSearch);
+  });
 
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
     let comparison = 0;
@@ -285,6 +302,32 @@ export default function TransactionsPage() {
             </div>
           </CardHeader>
           <CardContent>
+            <div className="flex justify-center items-center mb-6">
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={previousMonth}
+                  className="h-9 w-9"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="px-3 py-2 rounded-md bg-muted text-center min-w-[140px]">
+                  <span className="font-medium">
+                    {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
+                  </span>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={nextMonth}
+                  className="h-9 w-9"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
             {loading ? (
               <div className="flex justify-center items-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -395,7 +438,9 @@ export default function TransactionsPage() {
                         ) : (
                           <tr>
                             <td colSpan={8} className="py-6 text-center text-muted-foreground">
-                              {searchTerm ? "Nenhuma transação encontrada para sua pesquisa." : "Nenhuma transação ainda. Adicione uma para começar."}
+                              {filteredTransactions.length === 0 && searchTerm ? 
+                                "Nenhuma transação encontrada para sua pesquisa." : 
+                                "Nenhuma transação no mês selecionado."}
                             </td>
                           </tr>
                         )}
@@ -411,7 +456,9 @@ export default function TransactionsPage() {
                     ))
                   ) : (
                     <div className="py-6 text-center text-muted-foreground">
-                      {searchTerm ? "Nenhuma transação encontrada para sua pesquisa." : "Nenhuma transação ainda. Adicione uma para começar."}
+                      {filteredTransactions.length === 0 && searchTerm ? 
+                        "Nenhuma transação encontrada para sua pesquisa." : 
+                        "Nenhuma transação no mês selecionado."}
                     </div>
                   )}
                 </div>
