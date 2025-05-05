@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { ArrowUpRight, ArrowDownRight, Search, Filter, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTransactions } from "@/context/transaction-context";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
-import { format, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
+import { format, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { TransactionClass, Transaction } from "@/types";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,7 +19,7 @@ type SortField = 'date' | 'category' | 'weddingCategory' | 'account' | 'class' |
 type SortDirection = 'asc' | 'desc';
 
 export default function TransactionsPage() {
-  const { transactions, loading, addTransaction, deleteTransaction } = useTransactions();
+  const { transactions, loading, addTransaction, deleteTransaction, fetchTransactionsForMonth } = useTransactions();
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
@@ -27,6 +27,15 @@ export default function TransactionsPage() {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const fetchRef = useRef(fetchTransactionsForMonth);
+
+  // Keep the function reference stable
+  fetchRef.current = fetchTransactionsForMonth;
+  
+  // Load transactions on initial mount
+  useEffect(() => {
+    fetchRef.current(currentMonth);
+  }, [currentMonth]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -46,27 +55,19 @@ export default function TransactionsPage() {
       : <ArrowDown className="ml-1 h-4 w-4" />;
   };
 
-  const previousMonth = () => {
+  const previousMonth = useCallback(() => {
     setCurrentMonth(prevMonth => subMonths(prevMonth, 1));
-  };
+  }, []);
 
-  const nextMonth = () => {
+  const nextMonth = useCallback(() => {
     setCurrentMonth(prevMonth => addMonths(prevMonth, 1));
-  };
+  }, []);
 
-  const filteredTransactions = transactions.filter(transaction => {
-    const transactionDate = new Date(transaction.date);
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-    
-    const isInSelectedMonth = transactionDate >= monthStart && transactionDate <= monthEnd;
-    const matchesSearch = 
-      transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.account.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return isInSelectedMonth && (searchTerm === "" || matchesSearch);
-  });
+  const filteredTransactions = transactions.filter(transaction => 
+    transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    transaction.account.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
     let comparison = 0;

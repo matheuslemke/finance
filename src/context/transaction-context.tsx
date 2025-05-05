@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { Transaction } from "@/types";
 import { fetchTransactions, addTransaction as addTransactionToSupabase, updateTransaction as updateTransactionInSupabase, deleteTransaction as deleteTransactionFromSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { startOfMonth, endOfMonth } from "date-fns";
 
 interface TransactionContextType {
   transactions: Transaction[];
@@ -11,6 +12,7 @@ interface TransactionContextType {
   addTransaction: (transaction: Omit<Transaction, "id">) => Promise<void>;
   updateTransaction: (id: string, transaction: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  fetchTransactionsForMonth: (date: Date) => Promise<void>;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
@@ -32,21 +34,24 @@ export function TransactionProvider({ children }: TransactionProviderProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadTransactions() {
-      try {
-        setLoading(true);
-        const data = await fetchTransactions();
-        setTransactions(data);
-      } catch (error) {
-        console.error("Erro ao carregar transações:", error);
-        toast.error("Não foi possível carregar as transações");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadTransactions();
+    // On initial load, fetch transactions for the current month
+    fetchTransactionsForMonth(new Date());
   }, []);
+
+  const fetchTransactionsForMonth = async (date: Date) => {
+    try {
+      setLoading(true);
+      const monthStart = startOfMonth(date);
+      const monthEnd = endOfMonth(date);
+      const data = await fetchTransactions(monthStart, monthEnd);
+      setTransactions(data);
+    } catch (error) {
+      console.error("Erro ao carregar transações:", error);
+      toast.error("Não foi possível carregar as transações");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addTransaction = async (transaction: Omit<Transaction, "id">) => {
     try {
@@ -117,6 +122,7 @@ export function TransactionProvider({ children }: TransactionProviderProps) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    fetchTransactionsForMonth,
   };
 
   return (

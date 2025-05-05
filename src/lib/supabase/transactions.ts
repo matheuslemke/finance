@@ -1,14 +1,24 @@
 import { Transaction } from '@/types';
 import { supabase, transactionsTable } from './client';
 
-export async function fetchTransactions(): Promise<Transaction[]> {
-  const { data, error } = await supabase
+export async function fetchTransactions(startDate?: Date, endDate?: Date): Promise<Transaction[]> {
+  let query = supabase
     .from(transactionsTable)
     .select(`
       *,
       categories:category_id (id, name, type, color),
       accounts:account_id (id, name, type, color)
     `);
+  
+  if (startDate) {
+    query = query.gte('date', startDate.toISOString());
+  }
+  
+  if (endDate) {
+    query = query.lte('date', endDate.toISOString());
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Erro ao buscar transações:', JSON.stringify(error, null, 2));
