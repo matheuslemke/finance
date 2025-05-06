@@ -655,13 +655,13 @@ export default function ImportTransactionsPage() {
         let defaultClass: TransactionClass | undefined;
         
         if (selectedImporterId === "nubank_credit") {
-          // For credit card: if it's a payment, use 'income', otherwise 'essential'
+          // For credit card: if it's a payment, use 'income', otherwise undefined
           const amountStr = String(transObj.amount || "0");
           const isPayment = amountStr.includes('-') || parseFloat(amountStr) < 0;
-          defaultClass = isPayment ? "income" : "essential";
+          defaultClass = isPayment ? "income" : undefined;
         } else {
           // For other transaction types
-          defaultClass = isPositive ? "income" : "essential";
+          defaultClass = isPositive ? "income" : undefined;
         }
         
         return {
