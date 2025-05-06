@@ -37,6 +37,55 @@ const mappingRules: MappingRule[] = [
     categoryId: "84fc85fa-9925-43eb-819b-cdaa862d2629",
     categoryName: "Assinaturas e serviços",
     class: "essential"
+  },
+  // Nubank credit card transaction mappings
+  {
+    pattern: "Idealguapoltda",
+    categoryId: "7f47b449-49e8-4117-a802-f653f0d86051", // Carro
+    categoryName: "Carro",
+    class: "essential"
+  },
+  {
+    pattern: "Amazonprimebr",
+    categoryId: "84fc85fa-9925-43eb-819b-cdaa862d2629", // Assinaturas
+    categoryName: "Assinaturas",
+    class: "non-essential"
+  },
+  {
+    pattern: /Auto Posto.*/,
+    categoryId: "7f47b449-49e8-4117-a802-f653f0d86051", // Carro
+    categoryName: "Carro",
+    class: "essential"
+  },
+  {
+    pattern: "Dm *Spotify",
+    categoryId: "84fc85fa-9925-43eb-819b-cdaa862d2629", // Assinaturas
+    categoryName: "Assinaturas",
+    class: "non-essential"
+  },
+  {
+    pattern: "Bmb*Mhnet",
+    categoryId: "a2a2b7f1-b8f2-430c-a366-d793f1f859f6", // Casa
+    categoryName: "Casa",
+    class: "essential"
+  },
+  {
+    pattern: "Bmb*Copel",
+    categoryId: "a2a2b7f1-b8f2-430c-a366-d793f1f859f6", // Casa
+    categoryName: "Casa",
+    class: "essential"
+  },
+  {
+    pattern: "Tim*Tim",
+    categoryId: "84fc85fa-9925-43eb-819b-cdaa862d2629", // Assinaturas
+    categoryName: "Assinaturas",
+    class: "non-essential"
+  },
+  {
+    pattern: "Azos Seguros*Azos Segu",
+    categoryId: "91cbb97e-85f4-4de1-b6b8-0552c1ca48cf", // Seguro
+    categoryName: "Seguro",
+    class: "essential"
   }
 ];
 

@@ -641,10 +641,13 @@ export default function ImportTransactionsPage() {
         // Apply mapping rules if description matches any patterns
         const mapping = description ? mapTransactionByDescription(description) : undefined;
         
-        // If mapping found, find the actual category name from categories array
+        // If mapping found, use the category id directly
+        const mappedCategoryId = mapping?.categoryId || "";
+        
+        // Find category name if we have an ID (for display purposes)
         let mappedCategoryName = "";
-        if (mapping?.categoryId) {
-          const category = categories.find(c => c.id === mapping.categoryId);
+        if (mappedCategoryId) {
+          const category = categories.find(c => c.id === mappedCategoryId);
           mappedCategoryName = category?.name || "";
         }
         
@@ -665,7 +668,7 @@ export default function ImportTransactionsPage() {
           ...transObj,
           // Apply category and class from mapping if available
           category: mappedCategoryName || (selectedImporterId === "generic" ? String(transObj.category || "") : ""),
-          categoryId: mapping?.categoryId || "",
+          categoryId: mappedCategoryId,
           // If no mapping found, use the determined default class
           class: mapping?.class || defaultClass
         } as ParsedTransaction;
