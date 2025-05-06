@@ -182,7 +182,7 @@ export default function TransactionsPage() {
           </div>
           
           <div className="mb-2">
-            <h3 className="font-medium text-lg">{transaction.description}</h3>
+            <h3 className="font-medium text-lg" title={transaction.description}>{transaction.description}</h3>
           </div>
           
           <div className="grid grid-cols-2 gap-x-3 mb-2">
@@ -368,7 +368,7 @@ export default function TransactionsPage() {
                                 <td className="py-3 px-4 text-sm">
                                   {format(transaction.date, "dd/MMM/yyyy", { locale: ptBR })}
                                 </td>
-                                <td className="py-3 px-4 text-sm max-w-[200px] truncate">{transaction.description}</td>
+                                <td className="py-3 px-4 text-sm max-w-[200px] truncate" title={transaction.description}>{transaction.description}</td>
                                 <td className="py-3 px-4 text-sm">
                                   <Chip 
                                     text={transaction.category} 

@@ -9,14 +9,13 @@ import { availableImporters, getImporterById } from "@/lib/importers/importer-re
 import { useAccounts } from "@/context/account-context";
 import { useCategories } from "@/context/category-context";
 import { useTransactions } from "@/context/transaction-context";
-import { Upload, FileText, AlertCircle, CheckCircle2, ChevronLeft, Save, Loader2, CreditCard, Info, Trash2 } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle2, ChevronLeft, Save, Loader2, CreditCard, Info, Trash2, Check } from "lucide-react";
 import { TransactionClass } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { mapTransactionByDescription } from "@/lib/importers/transaction-mapper";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ParsedTransaction {
@@ -460,26 +459,12 @@ export default function ImportTransactionsPage() {
                         <td className="py-3 px-4 text-sm">
                           {transactionData.date}
                         </td>
-                        <td className="py-3 px-4 text-sm max-w-xs truncate relative">
+                        <td className="py-3 px-4 text-sm max-w-xs truncate relative" title={transactionData.description}>
                           <div className="flex items-center">
-                            {transaction.categoryId && (
-                              <span className="mr-2 flex-shrink-0 bg-blue-500 rounded-full w-2 h-2" aria-hidden="true" />
+                            {transaction.categoryId && transaction.class && (
+                              <Check className="mr-2 flex-shrink-0 text-blue-500 h-3 w-3" aria-hidden="true" />
                             )}
                             <span>{transactionData.description}</span>
-                            {transaction.categoryId && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="ml-1 inline-flex">
-                                      <Info className="h-4 w-4 text-blue-500" />
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Sugestão automática baseada na descrição</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
                           </div>
                         </td>
                         <td className={`py-3 px-4 text-sm ${transactionData.isNegative ? 'text-red-500' : 'text-green-500'}`}>
