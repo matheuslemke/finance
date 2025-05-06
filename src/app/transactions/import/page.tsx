@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { mapTransactionByDescription } from "@/lib/importers/transaction-mapper";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -25,6 +26,12 @@ interface ParsedTransaction {
   [key: string]: unknown;
 }
 
+// Import or define Category interface
+interface Category {
+  id: string;
+  name: string;
+}
+
 const classOptions: Record<TransactionClass, string> = {
   "essential": "Essencial",
   "non-essential": "Não Essencial",
@@ -32,6 +39,139 @@ const classOptions: Record<TransactionClass, string> = {
   "income": "Receita",
   "business": "PJ"
 };
+
+// Create a memoized transaction row component
+interface TransactionRowProps {
+  transaction: ParsedTransaction;
+  index: number;
+  selectedImporterId: string;
+  onStartEditing: (index: number, value: string) => void;
+  onDelete: (index: number) => void;
+  categories: Category[];
+  classOptions: Record<TransactionClass, string>;
+  onCategoryChange: (index: number, value: string) => void;
+  onClassChange: (index: number, value: TransactionClass) => void;
+}
+
+const TransactionRow = memo(({ 
+  transaction, 
+  index, 
+  selectedImporterId,
+  onStartEditing,
+  onDelete,
+  categories,
+  classOptions,
+  onCategoryChange,
+  onClassChange
+}: TransactionRowProps) => {
+  // Performance monitoring
+  console.log(`Rendering row ${index}`);
+  
+  // Get transaction data
+  let transactionData;
+  
+  if (selectedImporterId === "nubank") {
+    transactionData = {
+      date: String(transaction.Data || ""),
+      description: String(transaction.Descrição || ""),
+      value: String(transaction.Valor || "0"),
+      isNegative: typeof transaction.Valor === 'string' && transaction.Valor.startsWith('-')
+    };
+  } else if (selectedImporterId === "inter") {
+    transactionData = {
+      date: String(transaction.Data || ""),
+      description: String(transaction.Descricao || ""),
+      value: String(transaction.Valor || "0"),
+      isNegative: typeof transaction.Tipo === 'string' && 
+        (transaction.Tipo.toLowerCase().includes('saque') || 
+         transaction.Tipo.toLowerCase().includes('pagamento') || 
+         transaction.Tipo.toLowerCase().includes('transferência enviada'))
+    };
+  } else {
+    transactionData = {
+      date: "Data não encontrada",
+      description: "Descrição não encontrada",
+      value: "0",
+      isNegative: false
+    };
+  }
+  
+  return (
+    <tr className={transaction.categoryId ? "border-b bg-blue-50/50 dark:bg-blue-950/30" : "border-b"}>
+      <td className="py-3 px-4 text-sm">
+        {transactionData.date}
+      </td>
+      <td className="py-3 px-4 text-sm max-w-xs relative">
+        <div className="flex items-center">
+          {transaction.categoryId && transaction.class && (
+            <Check className="mr-2 flex-shrink-0 text-blue-500 h-3 w-3" aria-hidden="true" />
+          )}
+          
+          <div className="w-full flex justify-between items-center">
+            <span 
+              className="truncate cursor-pointer hover:underline" 
+              title={transactionData.description}
+              onClick={() => onStartEditing(index, transactionData.description)}
+            >
+              {transactionData.description}
+            </span>
+          </div>
+        </div>
+      </td>
+      <td className={`py-3 px-4 text-sm ${transactionData.isNegative ? 'text-red-500' : 'text-green-500'}`}>
+        {transactionData.isNegative ? '-' : '+'}R${Math.abs(parseFloat(transactionData.value.replace(/[^\d.-]/g, '') || '0')).toFixed(2)}
+      </td>
+      <td className="py-3 px-4 text-sm">
+        <Select 
+          value={transaction.category || ""} 
+          onValueChange={(value) => onCategoryChange(index, value)}
+        >
+          <SelectTrigger className="h-8 w-full">
+            <SelectValue placeholder="Selecione" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map(category => (
+              <SelectItem key={category.id} value={category.name}>
+                {category.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
+      <td className="py-3 px-4 text-sm">
+        <Select 
+          value={transaction.class as string || ""} 
+          onValueChange={(value) => onClassChange(index, value as TransactionClass)}
+        >
+          <SelectTrigger className="h-8 w-full">
+            <SelectValue placeholder="Selecione" />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(classOptions).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
+      <td className="py-3 px-4 text-sm">
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => onDelete(index)}
+            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
+TransactionRow.displayName = "TransactionRow"; // Required for memo components in dev mode
 
 export default function ImportTransactionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +187,17 @@ export default function ImportTransactionsPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editingState, setEditingState] = useState<{
+    isOpen: boolean;
+    index: number | null;
+    value: string;
+    originalValue: string;
+  }>({
+    isOpen: false,
+    index: null,
+    value: "",
+    originalValue: ""
+  });
   
   // Current selected importer
   const selectedImporter = getImporterById(selectedImporterId);
@@ -155,6 +306,70 @@ export default function ImportTransactionsPage() {
     });
   };
   
+  const startEditing = (index: number, initialValue: string) => {
+    console.time('startEditing');
+    setEditingState({
+      isOpen: true,
+      index,
+      value: initialValue,
+      originalValue: initialValue
+    });
+    console.timeEnd('startEditing');
+  };
+  
+  const saveDescriptionEdit = () => {
+    console.time('saveDescriptionEdit');
+    if (editingState.index === null) return;
+    
+    setParsedTransactions(prev => {
+      console.time('setParsedTransactions');
+      const updated = [...prev];
+      const index = editingState.index as number; // Type assertion since we already checked it's not null
+      
+      if (selectedImporterId === "nubank") {
+        updated[index] = {
+          ...updated[index],
+          Descrição: editingState.value
+        };
+      } else if (selectedImporterId === "inter") {
+        updated[index] = {
+          ...updated[index],
+          Descricao: editingState.value
+        };
+      }
+      
+      console.timeEnd('setParsedTransactions');
+      return updated;
+    });
+    
+    // Close editor
+    setEditingState({
+      isOpen: false,
+      index: null,
+      value: "",
+      originalValue: ""
+    });
+    
+    console.timeEnd('saveDescriptionEdit');
+  };
+  
+  const cancelEditing = () => {
+    setEditingState({
+      isOpen: false,
+      index: null,
+      value: "",
+      originalValue: ""
+    });
+  };
+  
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // This now only updates the local editing state, not the transactions list
+    setEditingState(prev => ({
+      ...prev,
+      value: e.target.value
+    }));
+  };
+  
   const handleImportTransactions = async () => {
     if (!selectedAccount || !selectedImporter) {
       toast.error("Selecione uma conta para continuar");
@@ -258,6 +473,42 @@ export default function ImportTransactionsPage() {
     }
   };
   
+  // Add log to check array size when it updates
+  useEffect(() => {
+    console.log(`parsedTransactions length: ${parsedTransactions.length}`);
+  }, [parsedTransactions]);
+  
+  // Log to monitor component render cycles
+  console.log('ImportTransactionsPage rendering');
+  
+  // Replace memoizedTableRows with:
+  const tableRows = useMemo(() => {
+    if (importStep !== "categorize") return [];
+    
+    console.time('tableRows calculation');
+    const rows = parsedTransactions.map((transaction, index) => (
+      <TransactionRow 
+        key={`transaction-${index}`}
+        transaction={transaction}
+        index={index}
+        selectedImporterId={selectedImporterId}
+        onStartEditing={startEditing}
+        onDelete={handleDeleteClick}
+        categories={categories}
+        classOptions={classOptions}
+        onCategoryChange={handleCategoryChange}
+        onClassChange={handleClassChange}
+      />
+    ));
+    console.timeEnd('tableRows calculation');
+    return rows;
+  }, [
+    parsedTransactions,
+    selectedImporterId,
+    importStep,
+    categories
+  ]);
+  
   const renderImporterSelection = () => (
     <Card>
       <CardHeader>
@@ -356,6 +607,7 @@ export default function ImportTransactionsPage() {
   );
   
   const renderCategorizeStep = () => {
+    console.log('renderCategorizeStep called');
     // Count auto-mapped transactions
     const mappedCount = parsedTransactions.filter(t => t.categoryId).length;
     const totalCount = parsedTransactions.length;
@@ -424,101 +676,7 @@ export default function ImportTransactionsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {parsedTransactions.map((transaction, index) => {
-                    // Adaptar para diferentes formatos de importadores
-                    let transactionData;
-                    
-                    if (selectedImporterId === "nubank") {
-                      transactionData = {
-                        date: String(transaction.Data || ""),
-                        description: String(transaction.Descrição || ""),
-                        value: String(transaction.Valor || "0"),
-                        isNegative: typeof transaction.Valor === 'string' && transaction.Valor.startsWith('-')
-                      };
-                    } else if (selectedImporterId === "inter") {
-                      transactionData = {
-                        date: String(transaction.Data || ""),
-                        description: String(transaction.Descricao || ""),
-                        value: String(transaction.Valor || "0"),
-                        isNegative: typeof transaction.Tipo === 'string' && 
-                          (transaction.Tipo.toLowerCase().includes('saque') || 
-                           transaction.Tipo.toLowerCase().includes('pagamento') || 
-                           transaction.Tipo.toLowerCase().includes('transferência enviada'))
-                      };
-                    } else {
-                      transactionData = {
-                        date: "Data não encontrada",
-                        description: "Descrição não encontrada",
-                        value: "0",
-                        isNegative: false
-                      };
-                    }
-                    
-                    return (
-                      <tr key={index} className={transaction.categoryId ? "border-b bg-blue-50/50 dark:bg-blue-950/30" : "border-b"}>
-                        <td className="py-3 px-4 text-sm">
-                          {transactionData.date}
-                        </td>
-                        <td className="py-3 px-4 text-sm max-w-xs truncate relative" title={transactionData.description}>
-                          <div className="flex items-center">
-                            {transaction.categoryId && transaction.class && (
-                              <Check className="mr-2 flex-shrink-0 text-blue-500 h-3 w-3" aria-hidden="true" />
-                            )}
-                            <span>{transactionData.description}</span>
-                          </div>
-                        </td>
-                        <td className={`py-3 px-4 text-sm ${transactionData.isNegative ? 'text-red-500' : 'text-green-500'}`}>
-                          {transactionData.isNegative ? '-' : '+'}R${Math.abs(parseFloat(transactionData.value.replace(/[^\d.-]/g, '') || '0')).toFixed(2)}
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          <Select 
-                            value={transaction.category || ""} 
-                            onValueChange={(value) => handleCategoryChange(index, value)}
-                          >
-                            <SelectTrigger className="h-8 w-full">
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {categories.map(category => (
-                                <SelectItem key={category.id} value={category.name}>
-                                  {category.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          <Select 
-                            value={transaction.class as string || ""} 
-                            onValueChange={(value) => handleClassChange(index, value as TransactionClass)}
-                          >
-                            <SelectTrigger className="h-8 w-full">
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(classOptions).map(([value, label]) => (
-                                <SelectItem key={value} value={value}>
-                                  {label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          <div className="flex items-center space-x-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => handleDeleteClick(index)}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {tableRows}
                 </tbody>
               </table>
             </div>
@@ -575,6 +733,72 @@ export default function ImportTransactionsPage() {
       </CardContent>
     </Card>
   );
+  
+  // Handle ESC key globally for the modal
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && editingState.isOpen) {
+        cancelEditing();
+      }
+    };
+    
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [editingState.isOpen]);
+  
+  // Add a floating editor component that exists outside the table
+  const DescriptionEditor = () => {
+    if (!editingState.isOpen) return null;
+    
+    // Handle keyboard events
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelEditing();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        saveDescriptionEdit();
+      }
+    };
+    
+    return (
+      <div 
+        className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"
+        onClick={(e) => {
+          // Close when clicking the backdrop (outside the modal)
+          if (e.target === e.currentTarget) {
+            cancelEditing();
+          }
+        }}
+      >
+        <div className="bg-background p-6 rounded-lg shadow-lg w-full max-w-md">
+          <h3 className="text-lg font-medium mb-4">Editar Descrição</h3>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Descrição</label>
+              <Input
+                value={editingState.value}
+                onChange={handleEditInputChange}
+                onKeyDown={handleKeyDown}
+                className="w-full"
+                autoFocus
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={cancelEditing}>
+                Cancelar
+              </Button>
+              <Button onClick={saveDescriptionEdit}>
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
   
   return (
     <DashboardLayout>
@@ -634,6 +858,9 @@ export default function ImportTransactionsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Add the floating editor */}
+      <DescriptionEditor />
     </DashboardLayout>
   );
 } 
