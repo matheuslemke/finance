@@ -10,6 +10,10 @@ export interface NubankTransaction {
   class?: TransactionClass;
 }
 
+/**
+ * Importador para transações da Nuconta (conta corrente do Nubank)
+ * Formato CSV exportado da conta do Nubank (não do cartão de crédito)
+ */
 export class NubankImporter {
   public static parseCSV(csvContent: string): NubankTransaction[] {
     const result = parse<NubankTransaction>(csvContent, {

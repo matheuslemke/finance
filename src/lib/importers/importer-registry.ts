@@ -23,8 +23,8 @@ export interface ImporterInfo {
 export const availableImporters: ImporterInfo[] = [
   {
     id: "nubank",
-    name: "Nubank",
-    description: "Importar transações da conta ou cartão do Nubank",
+    name: "Nuconta",
+    description: "Importar transações da conta corrente do Nubank",
     institution: "Nubank",
     importer: NubankImporter
   },
