@@ -9,7 +9,7 @@ import { availableImporters, getImporterById } from "@/lib/importers/importer-re
 import { useAccounts } from "@/context/account-context";
 import { useCategories } from "@/context/category-context";
 import { useTransactions } from "@/context/transaction-context";
-import { Upload, FileText, AlertCircle, CheckCircle2, ChevronLeft, Save, Loader2, CreditCard, Info, Trash2, Check } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle2, ChevronLeft, Save, Loader2, CreditCard, Info, Trash2, Check, MoreHorizontal, Edit, HeartHandshake, ArrowRightLeft } from "lucide-react";
 import { TransactionClass, TransactionType, Account } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -18,6 +18,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { mapTransactionByDescription } from "@/lib/importers/transaction-mapper";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { DEFAULT_WEDDING_CATEGORIES } from "@/types";
 
 interface ParsedTransaction {
   category?: string;
@@ -29,6 +37,7 @@ interface ParsedTransaction {
   sourceAccount?: string;
   destinationAccount?: string;
   weddingCategory?: string;
+  isWeddingRelated?: boolean;
   [key: string]: unknown;
 }
 
@@ -65,6 +74,11 @@ interface TransactionRowProps {
     sourceAccountId: string;
     destinationAccountId: string;
   }>>;
+  setParsedTransactions: React.Dispatch<React.SetStateAction<ParsedTransaction[]>>;
+  setWeddingModalState: React.Dispatch<React.SetStateAction<{
+    isOpen: boolean;
+    index: number | null;
+  }>>;
 }
 
 const TransactionRow = memo(({ 
@@ -78,7 +92,9 @@ const TransactionRow = memo(({
   accounts,
   onCategoryChange,
   onClassChange,
-  setTransferModalState
+  setTransferModalState,
+  setParsedTransactions,
+  setWeddingModalState
 }: TransactionRowProps) => {
   // Performance monitoring
   console.log(`Rendering row ${index}`);
@@ -139,6 +155,13 @@ const TransactionRow = memo(({
             >
               {transactionData.description}
             </span>
+            
+            {transaction.isWeddingRelated && (
+              <div className="ml-2 px-1.5 py-0.5 bg-pink-100 text-pink-800 text-xs rounded-md flex items-center">
+                <HeartHandshake className="h-3 w-3 mr-1" />
+                <span className="truncate max-w-20">{transaction.weddingCategory}</span>
+              </div>
+            )}
           </div>
         </div>
       </td>
@@ -147,38 +170,14 @@ const TransactionRow = memo(({
       </td>
       <td className="py-3 px-4 text-sm">
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Button 
-              variant={transaction.isTransfer ? "default" : "outline"} 
-              size="sm"
-              className="text-xs"
-              onClick={() => {
-                const isNegative = transactionData.isNegative;
-                const isIncoming = !isNegative;
-                
-                setTransferModalState({
-                  isOpen: true,
-                  index,
-                  isIncoming,
-                  sourceAccountId: isIncoming ? "" : "9dc32abe-0ab4-4e3a-a792-a0992e737365",
-                  destinationAccountId: isIncoming ? "9dc32abe-0ab4-4e3a-a792-a0992e737365" : transaction.destinationAccountId || ""
-                });
-              }}
-              disabled={accounts.length < 2}
-              title={accounts.length < 2 ? "É necessário ter pelo menos 2 contas para fazer transferências" : ""}
-            >
-              {transaction.isTransfer ? 'Transferência' : 'Marcar como Transferência'}
-            </Button>
-            
-            {transaction.isTransfer && transaction.sourceAccount && transaction.destinationAccount && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span>{transactionData.isNegative ? 'Saída' : 'Entrada'}</span>
-                <span>
-                  • {String(transaction.sourceAccount)} → {String(transaction.destinationAccount)}
-                </span>
-              </div>
-            )}
-          </div>
+          {transaction.isTransfer && transaction.sourceAccount && transaction.destinationAccount && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span>{transactionData.isNegative ? 'Saída' : 'Entrada'}</span>
+              <span>
+                • {String(transaction.sourceAccount)} → {String(transaction.destinationAccount)}
+              </span>
+            </div>
+          )}
 
           <Select 
             value={transaction.category || ""} 
@@ -216,14 +215,106 @@ const TransactionRow = memo(({
       </td>
       <td className="py-3 px-4 text-sm">
         <div className="flex items-center space-x-2">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => onDelete(index)}
-            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onStartEditing(index, transactionData.description)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Editar descrição
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem
+                onClick={() => {
+                  const isNegative = transactionData.isNegative;
+                  const isIncoming = !isNegative;
+                  
+                  setTransferModalState({
+                    isOpen: true,
+                    index,
+                    isIncoming,
+                    sourceAccountId: isIncoming ? "" : "9dc32abe-0ab4-4e3a-a792-a0992e737365",
+                    destinationAccountId: isIncoming ? "9dc32abe-0ab4-4e3a-a792-a0992e737365" : transaction.destinationAccountId || ""
+                  });
+                }}
+                disabled={accounts.length < 2}
+              >
+                <ArrowRightLeft className="h-4 w-4 mr-2" />
+                {transaction.isTransfer ? 'Editar transferência' : 'Marcar como transferência'}
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              
+              {!transaction.isWeddingRelated ? (
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setParsedTransactions(prev => {
+                      const updated = [...prev];
+                      updated[index] = {
+                        ...updated[index],
+                        isWeddingRelated: true,
+                      };
+                      return updated;
+                    });
+                    
+                    // Abrir o modal de categoria de casamento
+                    setWeddingModalState({
+                      isOpen: true,
+                      index
+                    });
+                  }}
+                >
+                  <HeartHandshake className="h-4 w-4 mr-2" />
+                  Marcar como despesa de casamento
+                </DropdownMenuItem>
+              ) : (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setWeddingModalState({
+                        isOpen: true,
+                        index
+                      });
+                    }}
+                  >
+                    <HeartHandshake className="h-4 w-4 mr-2" />
+                    Editar categoria de casamento
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      setParsedTransactions(prev => {
+                        const updated = [...prev];
+                        updated[index] = {
+                          ...updated[index],
+                          isWeddingRelated: false,
+                          weddingCategory: undefined
+                        };
+                        return updated;
+                      });
+                    }}
+                    className="text-red-500"
+                  >
+                    <HeartHandshake className="h-4 w-4 mr-2" />
+                    Remover marcação de casamento
+                  </DropdownMenuItem>
+                </>
+              )}
+              
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuItem 
+                onClick={() => onDelete(index)}
+                className="text-red-500"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir transação
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </td>
     </tr>
@@ -271,6 +362,30 @@ export default function ImportTransactionsPage() {
     sourceAccountId: "",
     destinationAccountId: ""
   });
+  
+  // Adicionar state para o modal de categoria de casamento
+  const [weddingModalState, setWeddingModalState] = useState<{
+    isOpen: boolean;
+    index: number | null;
+  }>({
+    isOpen: false,
+    index: null
+  });
+  
+  // State for wedding category selection
+  const [selectedWeddingCategory, setSelectedWeddingCategory] = useState(DEFAULT_WEDDING_CATEGORIES[0]);
+  
+  // Update the selected category when the modal opens
+  useEffect(() => {
+    if (weddingModalState.isOpen && weddingModalState.index !== null) {
+      const transaction = parsedTransactions[weddingModalState.index];
+      if (transaction?.weddingCategory) {
+        setSelectedWeddingCategory(transaction.weddingCategory);
+      } else {
+        setSelectedWeddingCategory(DEFAULT_WEDDING_CATEGORIES[0]);
+      }
+    }
+  }, [weddingModalState, parsedTransactions]);
   
   // Current selected importer
   const selectedImporter = getImporterById(selectedImporterId);
@@ -508,6 +623,11 @@ export default function ImportTransactionsPage() {
         // Para outras transações, verifica categoria e classe
         return !t.category || !t.class;
       }
+      
+      // Para transações marcadas como de casamento, verifica se tem categoria de casamento
+      if (t.isWeddingRelated && !t.weddingCategory) {
+        return true;
+      }
     });
     
     if (hasInvalidTransactions) {
@@ -540,6 +660,22 @@ export default function ImportTransactionsPage() {
             if (category) {
               transaction.categoryId = category.id;
             }
+          }
+          
+          // Adicionar weddingCategory se a transação for marcada como de casamento
+          const originalTransaction = regularTransactions.find(t => {
+            if (selectedImporterId === "nubank") {
+              return t.Descrição === transaction.description;
+            } else if (selectedImporterId === "inter") {
+              return t.Descricao === transaction.description;
+            } else if (selectedImporterId === "generic") {
+              return t.description === transaction.description;
+            }
+            return false;
+          });
+          
+          if (originalTransaction?.isWeddingRelated) {
+            transaction.weddingCategory = originalTransaction.weddingCategory;
           }
         }
         
@@ -587,6 +723,9 @@ export default function ImportTransactionsPage() {
           // Encontrar a categoria correspondente
           const category = categories.find(c => c.name === transfer.category);
           
+          // Adicionar weddingCategory se a transferência for marcada como de casamento
+          const weddingCategory = transfer.isWeddingRelated ? transfer.weddingCategory : undefined;
+          
           // Criar transação de transferência com tipos corrigidos
           const transferTransaction = {
             type: "transfer" as TransactionType,
@@ -602,7 +741,7 @@ export default function ImportTransactionsPage() {
             destinationAccountId: destinationAccountId as string,
             destinationAccount: destAccount.name,
             destinationAccountColor: destAccount.color,
-            weddingCategory: transfer.weddingCategory as string | undefined
+            weddingCategory
           };
           
           transactionsToImport.push(transferTransaction);
@@ -694,6 +833,8 @@ export default function ImportTransactionsPage() {
         onCategoryChange={handleCategoryChange}
         onClassChange={handleClassChange}
         setTransferModalState={setTransferModalState}
+        setParsedTransactions={setParsedTransactions}
+        setWeddingModalState={setWeddingModalState}
       />
     ));
     console.timeEnd('tableRows calculation');
@@ -704,7 +845,8 @@ export default function ImportTransactionsPage() {
     importStep,
     categories,
     accounts,
-    setTransferModalState
+    setTransferModalState,
+    setWeddingModalState
   ]);
   
   const renderImporterSelection = () => (
@@ -1122,6 +1264,89 @@ export default function ImportTransactionsPage() {
     );
   };
   
+  // Simplified Wedding Category Modal component
+  const renderWeddingCategoryModal = () => {
+    if (!weddingModalState.isOpen || weddingModalState.index === null) return null;
+    
+    const index = weddingModalState.index;
+    const transaction = parsedTransactions[index];
+    
+    let description = "";
+    if (selectedImporterId === "nubank") {
+      description = String(transaction?.Descrição || "");
+    } else if (selectedImporterId === "inter") {
+      description = String(transaction?.Descricao || "");
+    } else if (selectedImporterId === "generic") {
+      description = String(transaction?.description || "");
+    }
+    
+    return (
+      <div 
+        className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setWeddingModalState(prev => ({...prev, isOpen: false}));
+          }
+        }}
+      >
+        <div className="bg-background p-6 rounded-lg shadow-lg w-full max-w-md">
+          <h3 className="text-lg font-medium mb-4">Categoria de Casamento</h3>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Transação: <span className="font-medium">{description}</span>
+            </p>
+            
+            <div>
+              <Label htmlFor="weddingCategory">Categoria</Label>
+              <Input
+                id="weddingCategory"
+                value={selectedWeddingCategory}
+                onChange={(e) => setSelectedWeddingCategory(e.target.value)}
+                placeholder="Insira a categoria de casamento"
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Ex: Buffet, Local, Fotografia, Decoração, etc.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setWeddingModalState(prev => ({...prev, isOpen: false}))}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (!selectedWeddingCategory.trim()) {
+                    toast.error("Por favor, insira uma categoria para o casamento");
+                    return;
+                  }
+                  
+                  setParsedTransactions(prev => {
+                    const updated = [...prev];
+                    updated[index] = {
+                      ...updated[index],
+                      weddingCategory: selectedWeddingCategory,
+                      isWeddingRelated: true
+                    };
+                    return updated;
+                  });
+                  
+                  setWeddingModalState(prev => ({...prev, isOpen: false}));
+                }}
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -1184,6 +1409,7 @@ export default function ImportTransactionsPage() {
       {/* Add the floating editors */}
       <DescriptionEditor />
       <TransferModal />
+      {renderWeddingCategoryModal()}
     </DashboardLayout>
   );
 } 
