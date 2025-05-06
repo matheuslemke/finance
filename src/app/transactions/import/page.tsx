@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
+import { useState, useRef, useEffect, useMemo, memo } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { availableImporters, getImporterById } from "@/lib/importers/importer-re
 import { useAccounts } from "@/context/account-context";
 import { useCategories } from "@/context/category-context";
 import { useTransactions } from "@/context/transaction-context";
-import { Upload, FileText, AlertCircle, CheckCircle2, ChevronLeft, Save, Loader2, CreditCard, Info, Trash2, Check, MoreHorizontal, Edit, HeartHandshake, ArrowRightLeft } from "lucide-react";
+import { Upload, FileText, AlertCircle, ChevronLeft, Save, Loader2, CreditCard, Info, Trash2, Check, MoreHorizontal, Edit, HeartHandshake, ArrowRightLeft } from "lucide-react";
 import { TransactionClass, Account } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -148,6 +148,8 @@ const TransactionRow = memo(({
       isNegative: false
     };
   }
+  
+  console.log(`Transaction row data for index ${index}:`, transactionData);
   
   return (
     <tr className={transaction.categoryId || transaction.isTransfer ? "border-b bg-blue-50/50 dark:bg-blue-950/30" : "border-b"}>
@@ -336,6 +338,114 @@ const TransactionRow = memo(({
 
 TransactionRow.displayName = "TransactionRow"; // Required for memo components in dev mode
 
+// Update the DescriptionEditor component to fix all issues
+const DescriptionEditor = memo(({ 
+  editingState, 
+  setEditingState, 
+  setParsedTransactions, 
+  selectedImporterId 
+}: {
+  editingState: {
+    isOpen: boolean;
+    index: number | null;
+    value: string;
+    originalValue: string;
+  };
+  setEditingState: React.Dispatch<React.SetStateAction<{
+    isOpen: boolean;
+    index: number | null;
+    value: string;
+    originalValue: string;
+  }>>;
+  setParsedTransactions: React.Dispatch<React.SetStateAction<ParsedTransaction[]>>;
+  selectedImporterId: string;
+}) => {
+  if (!editingState.isOpen || editingState.index === null) return null;
+
+  const handleSave = () => {
+    const index = editingState.index;
+    if (index !== null) {
+      console.log("Saving edited description:", editingState.value);
+      console.log("Selected importer:", selectedImporterId);
+      
+      setParsedTransactions(prev => {
+        const updated = [...prev];
+        if (!updated[index]) return updated;
+
+        console.log("Transaction before update:", updated[index]);
+        
+        // Update the transaction based on the importer type
+        if (selectedImporterId === "nubank") {
+          updated[index] = {
+            ...updated[index],
+            Descrição: editingState.value
+          };
+        } else if (selectedImporterId === "nubank_credit") {
+          updated[index] = {
+            ...updated[index],
+            title: editingState.value
+          };
+        } else if (selectedImporterId === "inter") {
+          updated[index] = {
+            ...updated[index],
+            Descricao: editingState.value
+          };
+        } else if (selectedImporterId === "generic") {
+          updated[index] = {
+            ...updated[index],
+            description: editingState.value
+          };
+        }
+        
+        console.log("Transaction after update:", updated[index]);
+        return updated;
+      });
+    }
+    setEditingState(prev => ({...prev, isOpen: false}));
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          setEditingState(prev => ({...prev, isOpen: false}));
+        }
+      }}
+    >
+      <div className="bg-background p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h3 className="text-lg font-medium mb-4">Editar Descrição</h3>
+        
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="description">Descrição da Transação</Label>
+            <Input
+              id="description"
+              value={editingState.value}
+              onChange={(e) => setEditingState(prev => ({...prev, value: e.target.value}))}
+              className="mt-1"
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setEditingState(prev => ({...prev, isOpen: false}))}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleSave}>
+              Salvar
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+DescriptionEditor.displayName = "DescriptionEditor";
+
 export default function ImportTransactionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { accounts } = useAccounts();
@@ -474,6 +584,8 @@ export default function ImportTransactionsPage() {
       const text = await file.text();
       const transactions = selectedImporter.importer.parseCSV(text);
       
+      console.log("Parsed transactions:", transactions); // Add debug logging
+      
       // Initialize with empty category and class, but set class to 'income' for positive amounts
       const transactionsWithDefaults = transactions.map((transaction: unknown) => {
         const transObj = transaction as Record<string, unknown>;
@@ -559,6 +671,8 @@ export default function ImportTransactionsPage() {
         } as ParsedTransaction;
       });
       
+      console.log("Transactions with defaults:", transactionsWithDefaults); // Add debug logging
+      
       setParsedTransactions(transactionsWithDefaults);
       setCurrentStep("categorize");
     } catch (error) {
@@ -606,69 +720,6 @@ export default function ImportTransactionsPage() {
       originalValue: initialValue
     });
     console.timeEnd('startEditing');
-  };
-  
-  const saveDescriptionEdit = () => {
-    console.time('saveDescriptionEdit');
-    if (editingState.index === null) return;
-    
-    setParsedTransactions(prev => {
-      console.time('setParsedTransactions');
-      const updated = [...prev];
-      const index = editingState.index as number; // Type assertion since we already checked it's not null
-      
-      if (selectedImporterId === "nubank") {
-        updated[index] = {
-          ...updated[index],
-          Descrição: editingState.value
-        };
-      } else if (selectedImporterId === "nubank_credit") {
-        updated[index] = {
-          ...updated[index],
-          title: editingState.value
-        };
-      } else if (selectedImporterId === "inter") {
-        updated[index] = {
-          ...updated[index],
-          Descricao: editingState.value
-        };
-      } else if (selectedImporterId === "generic") {
-        updated[index] = {
-          ...updated[index],
-          description: editingState.value
-        };
-      }
-      
-      console.timeEnd('setParsedTransactions');
-      return updated;
-    });
-    
-    // Close editor
-    setEditingState({
-      isOpen: false,
-      index: null,
-      value: "",
-      originalValue: ""
-    });
-    
-    console.timeEnd('saveDescriptionEdit');
-  };
-  
-  const cancelEditing = () => {
-    setEditingState({
-      isOpen: false,
-      index: null,
-      value: "",
-      originalValue: ""
-    });
-  };
-  
-  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // This now only updates the local editing state, not the transactions list
-    setEditingState(prev => ({
-      ...prev,
-      value: e.target.value
-    }));
   };
   
   const handleTransferChange = (index: number, isTransfer: boolean, sourceAccountId?: string, destinationAccountId?: string) => {
@@ -757,15 +808,6 @@ export default function ImportTransactionsPage() {
     }
   };
   
-  const resetImport = useCallback(() => {
-    setParsedTransactions([]);
-    setCurrentStep("select-importer");
-    setImportError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  }, []);
-  
   const handleDeleteClick = (index: number) => {
     setTransactionToDelete(index);
     setDeleteDialogOpen(true);
@@ -839,7 +881,12 @@ export default function ImportTransactionsPage() {
     currentStep,
     categories,
     accounts,
+    handleCategoryChange,
+    handleClassChange,
+    startEditing,
+    handleDeleteClick,
     setTransferModalState,
+    setParsedTransactions,
     setWeddingModalState
   ]);
   
@@ -1038,6 +1085,105 @@ export default function ImportTransactionsPage() {
     const mappedCount = parsedTransactions.filter(t => t.categoryId).length;
     const totalCount = parsedTransactions.length;
     
+    // Calculate totals
+    const calculateTotal = () => {
+      let total = 0;
+      
+      if (parsedTransactions.length === 0) {
+        return { formattedTotal: "R$0,00", income: 0, expense: 0 };
+      }
+      
+      parsedTransactions.forEach(transaction => {
+        let amount = 0;
+        let isPositive = false;
+        
+        if (selectedImporterId === "nubank") {
+          amount = Math.abs(parseFloat(String(transaction.Valor || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = typeof transaction.Valor === 'string' && !transaction.Valor.startsWith('-');
+        } else if (selectedImporterId === "nubank_credit") {
+          amount = Math.abs(parseFloat(String(transaction.amount || "0").replace(/[^\d.-]/g, '') || '0'));
+          // For credit card, negative values in CSV are payments (income)
+          isPositive = String(transaction.amount || "").includes('-') || parseFloat(String(transaction.amount || "0")) < 0;
+        } else if (selectedImporterId === "inter") {
+          amount = Math.abs(parseFloat(String(transaction.Valor || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = !(typeof transaction.Tipo === 'string' && 
+            (transaction.Tipo.toLowerCase().includes('saque') || 
+             transaction.Tipo.toLowerCase().includes('pagamento') || 
+             transaction.Tipo.toLowerCase().includes('transferência enviada')));
+        } else if (selectedImporterId === "generic") {
+          amount = Math.abs(parseFloat(String(transaction.amount || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = !(typeof transaction.amount === 'string' && 
+            (transaction.amount.startsWith('-') || parseFloat(transaction.amount) < 0));
+        }
+        
+        // Add or subtract based on transaction type
+        if (isPositive) {
+          total += amount; // Income
+        } else {
+          total -= amount; // Expense
+        }
+      });
+      
+      // Calculate income and expense separately for the summary
+      const income = parsedTransactions.reduce((sum, transaction) => {
+        let amount = 0;
+        let isPositive = false;
+        
+        if (selectedImporterId === "nubank") {
+          amount = Math.abs(parseFloat(String(transaction.Valor || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = typeof transaction.Valor === 'string' && !transaction.Valor.startsWith('-');
+        } else if (selectedImporterId === "nubank_credit") {
+          amount = Math.abs(parseFloat(String(transaction.amount || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = String(transaction.amount || "").includes('-') || parseFloat(String(transaction.amount || "0")) < 0;
+        } else if (selectedImporterId === "inter") {
+          amount = Math.abs(parseFloat(String(transaction.Valor || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = !(typeof transaction.Tipo === 'string' && 
+            (transaction.Tipo.toLowerCase().includes('saque') || 
+             transaction.Tipo.toLowerCase().includes('pagamento') || 
+             transaction.Tipo.toLowerCase().includes('transferência enviada')));
+        } else if (selectedImporterId === "generic") {
+          amount = Math.abs(parseFloat(String(transaction.amount || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = !(typeof transaction.amount === 'string' && 
+            (transaction.amount.startsWith('-') || parseFloat(transaction.amount) < 0));
+        }
+        
+        return isPositive ? sum + amount : sum;
+      }, 0);
+      
+      const expense = parsedTransactions.reduce((sum, transaction) => {
+        let amount = 0;
+        let isPositive = false;
+        
+        if (selectedImporterId === "nubank") {
+          amount = Math.abs(parseFloat(String(transaction.Valor || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = typeof transaction.Valor === 'string' && !transaction.Valor.startsWith('-');
+        } else if (selectedImporterId === "nubank_credit") {
+          amount = Math.abs(parseFloat(String(transaction.amount || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = String(transaction.amount || "").includes('-') || parseFloat(String(transaction.amount || "0")) < 0;
+        } else if (selectedImporterId === "inter") {
+          amount = Math.abs(parseFloat(String(transaction.Valor || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = !(typeof transaction.Tipo === 'string' && 
+            (transaction.Tipo.toLowerCase().includes('saque') || 
+             transaction.Tipo.toLowerCase().includes('pagamento') || 
+             transaction.Tipo.toLowerCase().includes('transferência enviada')));
+        } else if (selectedImporterId === "generic") {
+          amount = Math.abs(parseFloat(String(transaction.amount || "0").replace(/[^\d.-]/g, '') || '0'));
+          isPositive = !(typeof transaction.amount === 'string' && 
+            (transaction.amount.startsWith('-') || parseFloat(transaction.amount) < 0));
+        }
+        
+        return !isPositive ? sum + amount : sum;
+      }, 0);
+      
+      return {
+        formattedTotal: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total),
+        income,
+        expense
+      };
+    };
+    
+    const { formattedTotal, income, expense } = calculateTotal();
+    
     return (
       <Card>
         <CardHeader>
@@ -1069,6 +1215,31 @@ export default function ImportTransactionsPage() {
               >
                 Remover não categorizadas
               </Button>
+            </div>
+            
+            {/* Transaction Summary Card */}
+            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
+              <h3 className="text-sm font-medium mb-2">Resumo da Importação</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Entradas (+)</p>
+                  <p className="text-lg font-semibold text-green-500">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(income)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Saídas (-)</p>
+                  <p className="text-lg font-semibold text-red-500">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(expense)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total</p>
+                  <p className={`text-lg font-semibold ${parseFloat(formattedTotal.replace(/[^\d,-]/g, '').replace(',', '.')) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {formattedTotal}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -1128,87 +1299,26 @@ export default function ImportTransactionsPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col items-center justify-center py-8">
-          <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-          <p className="text-lg font-medium mb-1">
-            {parsedTransactions.length} transações importadas
+        <div className="flex flex-col items-center justify-center py-10">
+          <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
+            <Check className="h-6 w-6 text-green-600" />
+          </div>
+          <h3 className="text-lg font-medium">Transações Importadas</h3>
+          <p className="text-sm text-muted-foreground mt-2 mb-6 text-center">
+            Todas as transações selecionadas foram importadas para sua conta
           </p>
-          <p className="text-sm text-muted-foreground mb-6">
-            Todas as transações foram adicionadas com sucesso
-          </p>
-          <Button onClick={resetImport}>
-            Importar Mais Transações
-          </Button>
+          <div className="flex gap-4">
+            <Button variant="outline" onClick={() => setCurrentStep("select-importer")}>
+              Importar Mais
+            </Button>
+            <Button onClick={() => window.location.href = "/transactions"}>
+              Ver Transações
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
   );
-  
-  // Handle ESC key globally for the modal
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && editingState.isOpen) {
-        cancelEditing();
-      }
-    };
-    
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [editingState.isOpen]);
-  
-  // Add a floating editor component that exists outside the table
-  const DescriptionEditor = () => {
-    if (!editingState.isOpen) return null;
-    
-    // Handle keyboard events
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        cancelEditing();
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        saveDescriptionEdit();
-      }
-    };
-    
-    return (
-      <div 
-        className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"
-        onClick={(e) => {
-          // Close when clicking the backdrop (outside the modal)
-          if (e.target === e.currentTarget) {
-            cancelEditing();
-          }
-        }}
-      >
-        <div className="bg-background p-6 rounded-lg shadow-lg w-full max-w-md">
-          <h3 className="text-lg font-medium mb-4">Editar Descrição</h3>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Descrição</label>
-              <Input
-                value={editingState.value}
-                onChange={handleEditInputChange}
-                onKeyDown={handleKeyDown}
-                className="w-full"
-                autoFocus
-              />
-            </div>
-            
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={cancelEditing}>
-                Cancelar
-              </Button>
-              <Button onClick={saveDescriptionEdit}>
-                Salvar
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
   
   // Adicionar o modal de transferência
   const TransferModal = () => {
@@ -1479,7 +1589,12 @@ export default function ImportTransactionsPage() {
       </Dialog>
       
       {/* Add the floating editors */}
-      <DescriptionEditor />
+      <DescriptionEditor 
+        editingState={editingState}
+        setEditingState={setEditingState}
+        setParsedTransactions={setParsedTransactions}
+        selectedImporterId={selectedImporterId}
+      />
       <TransferModal />
       {renderWeddingCategoryModal()}
     </DashboardLayout>
