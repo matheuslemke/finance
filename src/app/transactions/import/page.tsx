@@ -1559,14 +1559,26 @@ export default function ImportTransactionsPage() {
                 <p className="text-sm truncate">
                   {selectedImporterId === "nubank" 
                     ? String(parsedTransactions[transactionToDelete].Descrição || "") 
-                    : selectedImporterId === "inter"
-                      ? String(parsedTransactions[transactionToDelete].Descricao || "")
-                      : ""}
+                    : selectedImporterId === "nubank_credit"
+                      ? String(parsedTransactions[transactionToDelete].title || "")
+                      : selectedImporterId === "inter"
+                        ? String(parsedTransactions[transactionToDelete].Descricao || "")
+                        : selectedImporterId === "generic"
+                          ? String(parsedTransactions[transactionToDelete].description || "")
+                          : ""}
                 </p>
                 
                 <p className="text-sm font-medium">Valor:</p>
                 <p className="text-sm">
-                  {String(parsedTransactions[transactionToDelete].Valor || "0")}
+                  {selectedImporterId === "nubank" 
+                    ? String(parsedTransactions[transactionToDelete].Valor || "0")
+                    : selectedImporterId === "nubank_credit"
+                      ? String(parsedTransactions[transactionToDelete].amount || "0")
+                      : selectedImporterId === "inter"
+                        ? String(parsedTransactions[transactionToDelete].Valor || "0")
+                        : selectedImporterId === "generic"
+                          ? String(parsedTransactions[transactionToDelete].amount || "0")
+                          : "0"}
                 </p>
                 
                 <p className="text-sm font-medium">Categoria:</p>
