@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, memo } from "react";
+import { useState, useRef, useEffect, useMemo, memo, useCallback } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -670,9 +670,7 @@ export default function ImportTransactionsPage() {
           class: mapping?.class || defaultClass
         } as ParsedTransaction;
       });
-      
-      console.log("Transactions with defaults:", transactionsWithDefaults); // Add debug logging
-      
+
       setParsedTransactions(transactionsWithDefaults);
       setCurrentStep("categorize");
     } catch (error) {
@@ -685,7 +683,7 @@ export default function ImportTransactionsPage() {
     fileInputRef.current?.click();
   };
   
-  const handleCategoryChange = (index: number, categoryName: string) => {
+  const handleCategoryChange = useCallback((index: number, categoryName: string) => {
     setParsedTransactions(prev => {
       const updated = [...prev];
       const category = categories.find(c => c.name === categoryName);
@@ -698,9 +696,9 @@ export default function ImportTransactionsPage() {
       };
       return updated;
     });
-  };
+  }, [categories]);
   
-  const handleClassChange = (index: number, transactionClass: TransactionClass) => {
+  const handleClassChange = useCallback((index: number, transactionClass: TransactionClass) => {
     setParsedTransactions(prev => {
       const updated = [...prev];
       updated[index] = {
@@ -709,9 +707,9 @@ export default function ImportTransactionsPage() {
       };
       return updated;
     });
-  };
+  }, []);
   
-  const startEditing = (index: number, initialValue: string) => {
+  const startEditing = useCallback((index: number, initialValue: string) => {
     console.time('startEditing');
     setEditingState({
       isOpen: true,
@@ -720,7 +718,7 @@ export default function ImportTransactionsPage() {
       originalValue: initialValue
     });
     console.timeEnd('startEditing');
-  };
+  }, []);
   
   const handleTransferChange = (index: number, isTransfer: boolean, sourceAccountId?: string, destinationAccountId?: string) => {
     setParsedTransactions(prev => {
@@ -808,10 +806,10 @@ export default function ImportTransactionsPage() {
     }
   };
   
-  const handleDeleteClick = (index: number) => {
+  const handleDeleteClick = useCallback((index: number) => {
     setTransactionToDelete(index);
     setDeleteDialogOpen(true);
-  };
+  }, []);
   
   const confirmDeleteTransaction = () => {
     if (transactionToDelete !== null) {
