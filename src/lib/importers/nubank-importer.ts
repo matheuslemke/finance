@@ -60,7 +60,8 @@ export class NubankImporter {
     nubankTransactions: NubankTransaction[],
     accountId: string,
     accountName: string,
-    accountColor?: string
+    accountColor?: string,
+    invoiceId?: string
   ): Omit<Transaction, 'id'>[] {
     return nubankTransactions
       .filter(transaction => transaction.category && transaction.class) // Only include transactions with category and class
@@ -79,7 +80,8 @@ export class NubankImporter {
           accountId,
           accountColor,
           class: transaction.class!,
-          amount
+          amount,
+          invoice_id: invoiceId
         };
       });
   }

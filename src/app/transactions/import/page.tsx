@@ -10,7 +10,7 @@ import { useAccounts } from "@/context/account-context";
 import { useCategories } from "@/context/category-context";
 import { useTransactions } from "@/context/transaction-context";
 import { Upload, FileText, AlertCircle, CheckCircle2, ChevronLeft, Save, Loader2, CreditCard, Info, Trash2, Check, MoreHorizontal, Edit, HeartHandshake, ArrowRightLeft } from "lucide-react";
-import { TransactionClass, TransactionType, Account } from "@/types";
+import { TransactionClass, Account } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { DEFAULT_WEDDING_CATEGORIES } from "@/types";
+import { useInvoices } from "@/context/invoice-context";
 
 interface ParsedTransaction {
   category?: string;
@@ -108,6 +109,18 @@ const TransactionRow = memo(({
       description: String(transaction.Descrição || ""),
       value: String(transaction.Valor || "0"),
       isNegative: typeof transaction.Valor === 'string' && transaction.Valor.startsWith('-')
+    };
+  } else if (selectedImporterId === "nubank_credit") {
+    // Check if this is a payment (they start with 'Pagamento' or have '(Pagamento)' suffix)
+    const isPayment = 
+      String(transaction.title || "").includes("Pagamento") || 
+      String(transaction.amount || "").startsWith("-");
+    
+    transactionData = {
+      date: String(transaction.date || ""),
+      description: String(transaction.title || ""),
+      value: String(transaction.amount || "0").replace("-", ""), // Remove minus sign for display
+      isNegative: !isPayment // Regular credit transactions are displayed as negative (expenses), but payments as positive
     };
   } else if (selectedImporterId === "inter") {
     transactionData = {
@@ -328,9 +341,12 @@ export default function ImportTransactionsPage() {
   const { accounts } = useAccounts();
   const { categories } = useCategories();
   const { addTransaction } = useTransactions();
+  const { getAllInvoicesForAccount } = useInvoices();
   
   const [selectedImporterId, setSelectedImporterId] = useState<string>("nubank");
-  const [importStep, setImportStep] = useState<"select-importer" | "upload" | "categorize" | "success">("select-importer");
+  const [selectedInvoice, setSelectedInvoice] = useState<string>("");
+  const [invoicesForAccount, setInvoicesForAccount] = useState<{ id: string; label: string }[]>([]);
+  const [currentStep, setCurrentStep] = useState<"select-importer" | "select-invoice" | "upload" | "categorize" | "success">("select-importer");
   const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -390,17 +406,62 @@ export default function ImportTransactionsPage() {
   // Current selected importer
   const selectedImporter = getImporterById(selectedImporterId);
   
-  const handleImporterChange = (importerId: string) => {
+  const handleImporterChange = async (importerId: string) => {
     setSelectedImporterId(importerId);
+    setSelectedInvoice("");
+    setParsedTransactions([]);
+    setInvoicesForAccount([]);
+    
+    const importer = getImporterById(importerId);
+    if (importer?.requiresInvoice) {
+      // Load invoices for Nubank credit card account
+      const CREDIT_CARD_ACCOUNT_ID = "93b8bd75-ab2b-4e52-b781-b117490c57eb";
+      const creditCardAccount = accounts.find(account => account.id === CREDIT_CARD_ACCOUNT_ID);
+      
+      if (creditCardAccount) {
+        try {
+          // Fetch all invoices for this account
+          const invoices = await getAllInvoicesForAccount(CREDIT_CARD_ACCOUNT_ID);
+          
+          if (invoices.length > 0) {
+            const formattedInvoices = invoices.map(invoice => ({
+              id: invoice.id,
+              label: `${invoice.year}/${String(invoice.month).padStart(2, '0')}`
+            }));
+            
+            setInvoicesForAccount(formattedInvoices);
+            setCurrentStep("select-invoice");
+          } else {
+            toast.error("Não há faturas disponíveis para este cartão de crédito");
+            setCurrentStep("upload");
+          }
+        } catch (error) {
+          console.error("Error loading invoices:", error);
+          toast.error("Erro ao carregar faturas");
+          setCurrentStep("upload");
+        }
+      } else {
+        setCurrentStep("upload");
+      }
+    } else {
+      setCurrentStep("upload");
+    }
+  };
+
+  const handleInvoiceSelect = (invoiceId: string) => {
+    setSelectedInvoice(invoiceId);
+    setCurrentStep("upload");
   };
   
   const handleContinueToUpload = () => {
-    if (!selectedImporterId) {
-      toast.error("Selecione um tipo de importação");
-      return;
+    if (selectedImporterId) {
+      const importer = getImporterById(selectedImporterId);
+      if (importer?.requiresInvoice && !selectedInvoice) {
+        setCurrentStep("select-invoice");
+      } else {
+        setCurrentStep("upload");
+      }
     }
-    
-    setImportStep("upload");
   };
   
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -424,6 +485,13 @@ export default function ImportTransactionsPage() {
         if (selectedImporterId === "nubank") {
           isPositive = typeof transObj.Valor === 'string' && !transObj.Valor.startsWith('-');
           description = String(transObj.Descrição || "");
+        } else if (selectedImporterId === "nubank_credit") {
+          // For credit card, payments (negative values in CSV) are income
+          const amountStr = String(transObj.amount || "0");
+          const isPayment = amountStr.includes('-') || parseFloat(amountStr) < 0;
+          
+          isPositive = isPayment; // Payments are positive (income), regular transactions are negative (expenses)
+          description = String(transObj.title || "");
         } else if (selectedImporterId === "inter") {
           isPositive = !(typeof transObj.Tipo === 'string' && 
             (transObj.Tipo.toLowerCase().includes('saque') || 
@@ -468,18 +536,31 @@ export default function ImportTransactionsPage() {
           mappedCategoryName = category?.name || "";
         }
         
+        // Determine default class based on transaction type
+        let defaultClass: TransactionClass | undefined;
+        
+        if (selectedImporterId === "nubank_credit") {
+          // For credit card: if it's a payment, use 'income', otherwise 'essential'
+          const amountStr = String(transObj.amount || "0");
+          const isPayment = amountStr.includes('-') || parseFloat(amountStr) < 0;
+          defaultClass = isPayment ? "income" : "essential";
+        } else {
+          // For other transaction types
+          defaultClass = isPositive ? "income" : "essential";
+        }
+        
         return {
           ...transObj,
           // Apply category and class from mapping if available
           category: mappedCategoryName || (selectedImporterId === "generic" ? String(transObj.category || "") : ""),
           categoryId: mapping?.categoryId || "",
-          // If no mapping found, use positive amount rule
-          class: mapping?.class || (isPositive ? "income" : undefined)
+          // If no mapping found, use the determined default class
+          class: mapping?.class || defaultClass
         } as ParsedTransaction;
       });
       
       setParsedTransactions(transactionsWithDefaults);
-      setImportStep("categorize");
+      setCurrentStep("categorize");
     } catch (error) {
       console.error("Error parsing CSV file:", error);
       setImportError(error instanceof Error ? error.message : "Erro desconhecido ao processar arquivo");
@@ -541,10 +622,20 @@ export default function ImportTransactionsPage() {
           ...updated[index],
           Descrição: editingState.value
         };
+      } else if (selectedImporterId === "nubank_credit") {
+        updated[index] = {
+          ...updated[index],
+          title: editingState.value
+        };
       } else if (selectedImporterId === "inter") {
         updated[index] = {
           ...updated[index],
           Descricao: editingState.value
+        };
+      } else if (selectedImporterId === "generic") {
+        updated[index] = {
+          ...updated[index],
+          description: editingState.value
         };
       }
       
@@ -600,164 +691,67 @@ export default function ImportTransactionsPage() {
   };
   
   const handleImportTransactions = async () => {
-    if (!selectedImporter) {
-      toast.error("Selecione uma conta para continuar");
-      return;
-    }
-    
-    const account = accounts.find(acc => acc.id === "9dc32abe-0ab4-4e3a-a792-a0992e737365");
-    if (!account) {
-      toast.error("Conta Nuconta não encontrada");
-      return;
-    }
-    
-    // Checar validações
-    const hasInvalidTransactions = parsedTransactions.some(t => {
-      if (t.isTransfer) {
-        // Para transferências, verifica categoria, classe e contas de origem/destino
-        const needsSourceAccount = !t.sourceAccountId && parseFloat(String(t.Valor || t.amount || "0").replace(/[^\d.-]/g, '') || '0') > 0;
-        const needsDestAccount = !t.destinationAccountId && parseFloat(String(t.Valor || t.amount || "0").replace(/[^\d.-]/g, '') || '0') < 0;
-        
-        return !t.category || !t.class || (needsSourceAccount || needsDestAccount);
-      } else {
-        // Para outras transações, verifica categoria e classe
-        return !t.category || !t.class;
-      }
-      
-      // Para transações marcadas como de casamento, verifica se tem categoria de casamento
-      if (t.isWeddingRelated && !t.weddingCategory) {
-        return true;
-      }
-    });
-    
-    if (hasInvalidTransactions) {
-      toast.error("Todas as transações precisam ter categoria e classe definidas. Para transferências, configure corretamente as contas de origem e destino.");
-      return;
-    }
-    
-    setIsImporting(true);
-    
     try {
-      // Para transações normais, usar o conversor padrão
-      const regularTransactions = parsedTransactions.filter(t => !t.isTransfer);
-      const transferTransactions = parsedTransactions.filter(t => t.isTransfer);
+      setIsImporting(true);
       
-      const transactionsToImport = [];
-      
-      // Converter transações normais
-      if (regularTransactions.length > 0) {
-        const regularConverted = selectedImporter.importer.convertToTransactions(
-          regularTransactions,
-          account.id,
-          account.name,
-          account.color
-        );
-        
-        // Adicionar categoryId para cada transação
-        for (const transaction of regularConverted) {
-          if (!transaction.categoryId && transaction.category) {
-            const category = categories.find(c => c.name === transaction.category);
-            if (category) {
-              transaction.categoryId = category.id;
-            }
-          }
-          
-          // Adicionar weddingCategory se a transação for marcada como de casamento
-          const originalTransaction = regularTransactions.find(t => {
-            if (selectedImporterId === "nubank") {
-              return t.Descrição === transaction.description;
-            } else if (selectedImporterId === "inter") {
-              return t.Descricao === transaction.description;
-            } else if (selectedImporterId === "generic") {
-              return t.description === transaction.description;
-            }
-            return false;
-          });
-          
-          if (originalTransaction?.isWeddingRelated) {
-            transaction.weddingCategory = originalTransaction.weddingCategory;
-          }
-        }
-        
-        transactionsToImport.push(...regularConverted);
+      // Get selected importer
+      const selectedImporter = getImporterById(selectedImporterId);
+      if (!selectedImporter) {
+        throw new Error("Importador não encontrado");
       }
       
-      // Processar transferências
-      if (transferTransactions.length > 0) {
-        for (const transfer of transferTransactions) {
-          // Obter os dados básicos da transação
-          let amount = 0;
-          let date = new Date();
-          let description = "";
-          let isIncoming = false;
-          
-          if (selectedImporterId === "nubank") {
-            amount = Math.abs(parseFloat(String(transfer.Valor).replace(/[^\d.-]/g, '') || '0'));
-            date = new Date(String(transfer.Data));
-            description = String(transfer.Descrição || "Transferência");
-            isIncoming = typeof transfer.Valor === 'string' && !transfer.Valor.startsWith('-');
-          } else if (selectedImporterId === "inter") {
-            amount = Math.abs(parseFloat(String(transfer.Valor).replace(/[^\d.-]/g, '') || '0'));
-            date = new Date(String(transfer.Data));
-            description = String(transfer.Descricao || "Transferência");
-            isIncoming = !(typeof transfer.Tipo === 'string' && 
-              (transfer.Tipo.toLowerCase().includes('saque') || 
-               transfer.Tipo.toLowerCase().includes('pagamento') || 
-               transfer.Tipo.toLowerCase().includes('transferência enviada')));
-          } else if (selectedImporterId === "generic") {
-            amount = Math.abs(parseFloat(String(transfer.amount).replace(/[^\d.-]/g, '') || '0'));
-            date = new Date(String(transfer.date));
-            description = String(transfer.description || "Transferência");
-            isIncoming = parseFloat(String(transfer.amount).replace(/[^\d.-]/g, '') || '0') >= 0;
-          }
-          
-          // Buscar as contas de origem e destino
-          const sourceAccountId = isIncoming ? transfer.sourceAccountId : account.id;
-          const destinationAccountId = isIncoming ? account.id : transfer.destinationAccountId;
-          
-          const sourceAccount = accounts.find(acc => acc.id === sourceAccountId);
-          const destAccount = accounts.find(acc => acc.id === destinationAccountId);
-          
-          if (!sourceAccount || !destAccount) continue;
-          
-          // Encontrar a categoria correspondente
-          const category = categories.find(c => c.name === transfer.category);
-          
-          // Adicionar weddingCategory se a transferência for marcada como de casamento
-          const weddingCategory = transfer.isWeddingRelated ? transfer.weddingCategory : undefined;
-          
-          // Criar transação de transferência com tipos corrigidos
-          const transferTransaction = {
-            type: "transfer" as TransactionType,
-            date,
-            description,
-            category: transfer.category || "Transferência",
-            categoryId: category?.id || "",
-            amount,
-            accountId: sourceAccountId as string,
-            account: sourceAccount.name,
-            accountColor: sourceAccount.color,
-            class: (transfer.class as TransactionClass) || "essential",
-            destinationAccountId: destinationAccountId as string,
-            destinationAccount: destAccount.name,
-            destinationAccountColor: destAccount.color,
-            weddingCategory
-          };
-          
-          transactionsToImport.push(transferTransaction);
+      let accountId = "9dc32abe-0ab4-4e3a-a792-a0992e737365"; // default Nuconta ID
+      let accountName = "Nuconta";
+      let accountColor = "#8a05be";
+      
+      // For Nubank credit, use the credit card account
+      if (selectedImporterId === "nubank_credit") {
+        const CREDIT_CARD_ACCOUNT_ID = "93b8bd75-ab2b-4e52-b781-b117490c57eb";
+        const creditAccount = accounts.find(acc => acc.id === CREDIT_CARD_ACCOUNT_ID);
+        if (creditAccount) {
+          accountId = creditAccount.id;
+          accountName = creditAccount.name;
+          accountColor = creditAccount.color || "#8a05be"; // Provide a fallback color
         }
+      }
+      
+      // Extract transactions with assigned categories and classes
+      const transactionsToImport = parsedTransactions.filter(t => 
+        (t.categoryId && t.class) || (t.isTransfer && t.destinationAccountId)
+      );
+      
+      // Handle differently based on importer type to avoid type issues
+      let convertedTransactions;
+      
+      if (selectedImporterId === "nubank_credit" && selectedInvoice) {
+        // For credit card transactions with invoice
+        convertedTransactions = selectedImporter.importer.convertToTransactions(
+          transactionsToImport,
+          accountId,
+          accountName,
+          accountColor,
+          selectedInvoice
+        );
+      } else {
+        // For regular transactions without invoice
+        convertedTransactions = selectedImporter.importer.convertToTransactions(
+          transactionsToImport,
+          accountId,
+          accountName,
+          accountColor
+        );
       }
       
       // Adicionar cada transação
-      for (const transaction of transactionsToImport) {
+      for (const transaction of convertedTransactions) {
         await addTransaction(transaction);
       }
       
-      setImportStep("success");
-      toast.success(`${transactionsToImport.length} transações importadas com sucesso`);
+      setCurrentStep("success");
+      toast.success(`${convertedTransactions.length} transações importadas com sucesso`);
     } catch (error) {
-      console.error("Error importing transactions:", error);
-      toast.error(`Erro ao importar transações: ${error instanceof Error ? error.message : String(error)}`);
+      console.error("Erro ao importar transações:", error);
+      toast.error(`Erro ao importar transações: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
     } finally {
       setIsImporting(false);
     }
@@ -765,7 +759,7 @@ export default function ImportTransactionsPage() {
   
   const resetImport = useCallback(() => {
     setParsedTransactions([]);
-    setImportStep("select-importer");
+    setCurrentStep("select-importer");
     setImportError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -816,7 +810,7 @@ export default function ImportTransactionsPage() {
   
   // Replace memoizedTableRows with:
   const tableRows = useMemo(() => {
-    if (importStep !== "categorize") return [];
+    if (currentStep !== "categorize") return [];
     
     console.time('tableRows calculation');
     const rows = parsedTransactions.map((transaction, index) => (
@@ -842,7 +836,7 @@ export default function ImportTransactionsPage() {
   }, [
     parsedTransactions,
     selectedImporterId,
-    importStep,
+    currentStep,
     categories,
     accounts,
     setTransferModalState,
@@ -850,45 +844,122 @@ export default function ImportTransactionsPage() {
   ]);
   
   const renderImporterSelection = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Selecione o Tipo de Importação</CardTitle>
-        <CardDescription>
-          Escolha a instituição financeira e o formato das transações a serem importadas
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          <RadioGroup 
-            value={selectedImporterId} 
-            onValueChange={handleImporterChange}
-            className="space-y-4"
-          >
-            {availableImporters.map((importer) => (
-              <div key={importer.id} className="flex items-center space-x-3 rounded-md border p-4 cursor-pointer hover:bg-muted/50">
-                <RadioGroupItem value={importer.id} id={`importer-${importer.id}`} />
-                <Label 
-                  htmlFor={`importer-${importer.id}`} 
-                  className="flex flex-1 cursor-pointer items-center justify-between"
-                >
-                  <div>
-                    <div className="font-medium">{importer.name}</div>
-                    <div className="text-sm text-muted-foreground">{importer.description}</div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Importar Transações</CardTitle>
+          <CardDescription>
+            Escolha o banco ou fonte de onde você deseja importar transações
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid gap-3">
+              <RadioGroup 
+                value={selectedImporterId} 
+                onValueChange={handleImporterChange}
+                className="grid gap-3"
+              >
+                {availableImporters.map((importer) => (
+                  <div key={importer.id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={importer.id} id={importer.id} />
+                    <Label htmlFor={importer.id} className="flex items-center gap-2 cursor-pointer">
+                      {importer.id === "nubank" && (
+                        <Upload className="h-4 w-4 text-purple-500" />
+                      )}
+                      {importer.id === "nubank_credit" && (
+                        <CreditCard className="h-4 w-4 text-purple-500" />
+                      )}
+                      {importer.id === "inter" && (
+                        <Upload className="h-4 w-4 text-orange-500" />
+                      )}
+                      {importer.id === "generic" && (
+                        <FileText className="h-4 w-4 text-blue-500" />
+                      )}
+                      <span className="flex-1">{importer.name}</span>
+                      <span className="text-xs text-muted-foreground">{importer.institution}</span>
+                    </Label>
                   </div>
-                  <CreditCard className="h-5 w-5 text-muted-foreground" />
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-          
-          <div className="flex justify-end">
-            <Button onClick={handleContinueToUpload}>
-              Continuar
-            </Button>
+                ))}
+              </RadioGroup>
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button 
+          onClick={handleContinueToUpload}
+          disabled={!selectedImporterId}
+        >
+          Continuar
+        </Button>
+      </div>
+    </div>
+  );
+  
+  const renderInvoiceSelection = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          onClick={() => setCurrentStep("select-importer")}
+          className="flex items-center gap-2"
+        >
+          <ChevronLeft size={16} />
+          Voltar
+        </Button>
+      </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Selecione a fatura</CardTitle>
+          <CardDescription>
+            Escolha a fatura que deseja vincular as transações do cartão de crédito
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid gap-3">
+              {invoicesForAccount.length > 0 ? (
+                <RadioGroup 
+                  value={selectedInvoice} 
+                  onValueChange={handleInvoiceSelect}
+                  className="grid gap-3"
+                >
+                  {invoicesForAccount.map((invoice) => (
+                    <div key={invoice.id} className="flex items-center space-x-2">
+                      <RadioGroupItem value={invoice.id} id={invoice.id} />
+                      <Label htmlFor={invoice.id} className="flex-1 cursor-pointer">
+                        {invoice.label}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              ) : (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Sem faturas</AlertTitle>
+                  <AlertDescription>
+                    Não há faturas disponíveis para o cartão de crédito selecionado. 
+                    Crie uma fatura primeiro.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button 
+          onClick={() => handleContinueToUpload()}
+          disabled={!selectedInvoice || invoicesForAccount.length === 0}
+        >
+          Continuar
+        </Button>
+      </div>
+    </div>
   );
   
   const renderUploadStep = () => (
@@ -952,7 +1023,7 @@ export default function ImportTransactionsPage() {
         </div>
         
         <div className="mt-6 flex justify-between">
-          <Button variant="outline" onClick={() => setImportStep("select-importer")}>
+          <Button variant="outline" onClick={() => setCurrentStep("select-importer")}>
             <ChevronLeft className="mr-2 h-4 w-4" />
             Voltar
           </Button>
@@ -1022,7 +1093,7 @@ export default function ImportTransactionsPage() {
           </div>
           
           <div className="mt-6 flex justify-between">
-            <Button variant="outline" onClick={() => setImportStep("upload")}>
+            <Button variant="outline" onClick={() => setCurrentStep("upload")}>
               <ChevronLeft className="mr-2 h-4 w-4" />
               Voltar
             </Button>
@@ -1358,10 +1429,11 @@ export default function ImportTransactionsPage() {
           </Button>
         </div>
         
-        {importStep === "select-importer" && renderImporterSelection()}
-        {importStep === "upload" && renderUploadStep()}
-        {importStep === "categorize" && renderCategorizeStep()}
-        {importStep === "success" && renderSuccessStep()}
+        {currentStep === "select-importer" && renderImporterSelection()}
+        {currentStep === "select-invoice" && renderInvoiceSelection()}
+        {currentStep === "upload" && renderUploadStep()}
+        {currentStep === "categorize" && renderCategorizeStep()}
+        {currentStep === "success" && renderSuccessStep()}
       </div>
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">

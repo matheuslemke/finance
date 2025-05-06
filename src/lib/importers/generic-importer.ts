@@ -1,161 +1,100 @@
-import { TransactionType, TransactionClass } from "@/types";
+import { parse } from 'papaparse';
+import { Transaction, TransactionClass, TransactionType } from '@/types';
 
-interface GenericTransactionRow {
+export interface GenericTransaction {
   date: string;
   description: string;
   amount: string;
   category?: string;
-  type?: string;
-  [key: string]: unknown;
+  class?: TransactionClass;
 }
 
-// Generic CSV parser that assumes columns:
-// date, description, amount (and optionally category, type)
-export const GenericImporter = {
-  parseCSV(csvContent: string): GenericTransactionRow[] {
-    try {
-      const lines = csvContent.split('\n');
-      
-      // Find header line
-      const headerLine = lines.find(line => 
-        line.toLowerCase().includes('date') || 
-        line.toLowerCase().includes('data') ||
-        line.toLowerCase().includes('description') ||
-        line.toLowerCase().includes('amount') ||
-        line.toLowerCase().includes('valor')
-      );
-      
-      if (!headerLine) {
-        throw new Error("O arquivo CSV não possui um cabeçalho reconhecível");
-      }
-      
-      // Extract header
-      const header = headerLine.split(',').map(h => h.trim().toLowerCase());
-      
-      // Find the indexes of required columns
-      const dateIndex = header.findIndex(h => h.includes('date') || h.includes('data'));
-      const descriptionIndex = header.findIndex(h => 
-        h.includes('description') || 
-        h.includes('descrição') || 
-        h.includes('descricao')
-      );
-      const amountIndex = header.findIndex(h => 
-        h.includes('amount') || 
-        h.includes('valor') || 
-        h.includes('value')
-      );
-      
-      // Optional columns
-      const categoryIndex = header.findIndex(h => 
-        h.includes('category') || 
-        h.includes('categoria')
-      );
-      const typeIndex = header.findIndex(h => 
-        h.includes('type') || 
-        h.includes('tipo')
-      );
-      
-      if (dateIndex === -1 || descriptionIndex === -1 || amountIndex === -1) {
-        throw new Error("O arquivo CSV não possui as colunas necessárias (data, descrição, valor)");
-      }
-      
-      // Skip header and empty lines
-      const dataLines = lines
-        .filter((line, index) => index !== lines.indexOf(headerLine) && line.trim() !== '');
-      
-      return dataLines.map(line => {
-        const columns = line.split(',').map(col => col.trim());
-        
-        const row: GenericTransactionRow = {
-          date: columns[dateIndex],
-          description: columns[descriptionIndex],
-          amount: columns[amountIndex],
-        };
-        
-        // Add optional columns if available
-        if (categoryIndex !== -1) {
-          row.category = columns[categoryIndex];
-        }
-        
-        if (typeIndex !== -1) {
-          row.type = columns[typeIndex];
-        }
-        
-        return row;
-      });
-    } catch (error) {
-      console.error("Error parsing CSV:", error);
-      throw new Error("Erro ao processar o arquivo CSV. Verifique o formato.");
+/**
+ * Importador genérico para qualquer formato padrão
+ * Formato CSV com cabeçalhos date, description, amount
+ */
+export class GenericImporter {
+  public static parseCSV(csvContent: string): GenericTransaction[] {
+    const result = parse<GenericTransaction>(csvContent, {
+      header: true,
+      skipEmptyLines: true,
+    });
+
+    if (result.errors.length > 0) {
+      console.error('Errors parsing CSV:', result.errors);
+      throw new Error('Erro ao analisar o arquivo CSV');
     }
-  },
-  
-  convertToTransactions(
-    parsedTransactions: GenericTransactionRow[],
+
+    return result.data;
+  }
+
+  private static formatDate(dateString: string): Date {
+    // Try to handle different date formats
+    try {
+      // Check if it's in YYYY-MM-DD format
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const [year, month, day] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      }
+      // Check if it's in DD/MM/YYYY format
+      else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        const [day, month, year] = dateString.split('/').map(Number);
+        return new Date(year, month - 1, day);
+      }
+      // Check if it's in MM/DD/YYYY format
+      else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        const [month, day, year] = dateString.split('/').map(Number);
+        return new Date(year, month - 1, day);
+      }
+      // Default fallback
+      else {
+        return new Date(dateString);
+      }
+    } catch (e) {
+      console.error('Error parsing date:', e);
+      return new Date();
+    }
+  }
+
+  private static formatAmount(amountString: string): number {
+    // Remove any non-numeric characters except for decimal point and minus sign
+    const sanitized = amountString.replace(/[^\d.-]/g, '');
+    return Math.abs(parseFloat(sanitized));
+  }
+
+  private static determineTransactionType(amountString: string): TransactionType {
+    // Check if the original amount had a minus sign
+    const value = parseFloat(amountString.replace(/[^\d.-]/g, ''));
+    return value < 0 ? 'expense' : 'income';
+  }
+
+  public static convertToTransactions(
+    genericTransactions: GenericTransaction[],
     accountId: string,
     accountName: string,
-    accountColor?: string
-  ) {
-    return parsedTransactions.map(transaction => {
-      // Parse date (assuming standard formats)
-      const dateParts = transaction.date.split(/[-\/\.]/);
-      let date;
-      
-      // Try different date formats
-      if (dateParts.length === 3) {
-        // Assume year is last or first depending on length
-        const yearIndex = dateParts[0].length === 4 ? 0 : 2;
-        const dayIndex = yearIndex === 0 ? 2 : 0;
-        const monthIndex = 1;
-        
-        // JavaScript months are 0-indexed
-        date = new Date(
-          parseInt(dateParts[yearIndex]), 
-          parseInt(dateParts[monthIndex]) - 1, 
-          parseInt(dateParts[dayIndex])
-        );
-      } else {
-        // Fallback to current date if parsing fails
-        date = new Date();
-      }
-      
-      // Parse amount
-      const amount = parseFloat(transaction.amount.replace(/[^\d.-]/g, '') || '0');
-      const isNegative = transaction.amount.includes('-') || amount < 0;
-      
-      // Determine transaction type based on amount sign or explicit type
-      let type: TransactionType;
-      if (transaction.type) {
-        if (transaction.type.toLowerCase().includes('income') || transaction.type.toLowerCase().includes('receita')) {
-          type = "income";
-        } else if (transaction.type.toLowerCase().includes('transfer') || transaction.type.toLowerCase().includes('transferência')) {
-          type = "transfer";
-        } else {
-          type = "expense";
-        }
-      } else {
-        type = isNegative ? "expense" : "income";
-      }
-      
-      // Use provided category or default by type
-      const category = transaction.category || (type === "income" ? "Outras Receitas" : "Outras Despesas");
-      
-      // Default class based on type
-      const transactionClass: TransactionClass = 
-        type === "income" ? "income" :
-        type === "transfer" ? "essential" : "essential";
-      
-      return {
-        type,
-        date,
-        description: transaction.description,
-        category,
-        categoryId: "",
-        accountId,
-        account: accountName,
-        accountColor,
-        class: transactionClass,
-        amount: Math.abs(amount),
-      };
-    });
+    accountColor?: string,
+    invoiceId?: string
+  ): Omit<Transaction, 'id'>[] {
+    return genericTransactions
+      .filter(transaction => transaction.category && transaction.class)
+      .map(transaction => {
+        const type = this.determineTransactionType(transaction.amount);
+        const amount = this.formatAmount(transaction.amount);
+        const date = this.formatDate(transaction.date);
+
+        return {
+          type,
+          date,
+          description: transaction.description,
+          category: transaction.category!,
+          categoryId: '',
+          account: accountName,
+          accountId,
+          accountColor,
+          class: transaction.class!,
+          amount,
+          invoice_id: invoiceId
+        };
+      });
   }
-}; 
+} 

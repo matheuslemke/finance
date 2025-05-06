@@ -4,12 +4,14 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback,
 import { Invoice } from "@/types";
 import { fetchInvoices, fetchInvoiceById } from "@/lib/supabase";
 import { toast } from "sonner";
+import { supabase, invoicesTable } from "@/lib/supabase/client";
 
 interface InvoiceContextType {
   invoices: Invoice[];
   loading: boolean;
   fetchInvoiceDetails: (id: string) => Promise<Invoice | null>;
   getFilteredInvoices: (month: number, year: number) => Invoice[];
+  getAllInvoicesForAccount: (accountId: string) => Promise<Invoice[]>;
   currentPeriod: { month: number; year: number };
 }
 
@@ -84,6 +86,53 @@ export function InvoiceProvider({ children }: InvoiceProviderProps) {
     return [];
   }, [invoiceCache]);
 
+  const getAllInvoicesForAccount = useCallback(async (accountId: string): Promise<Invoice[]> => {
+    try {
+      setLoading(true);
+      
+      // Get all invoices for this account directly from Supabase
+      const { data, error } = await supabase
+        .from(invoicesTable)
+        .select(`
+          *,
+          accounts:account_id (id, name, type, color)
+        `)
+        .eq("account_id", accountId)
+        .order('year', { ascending: false })
+        .order('month', { ascending: false });
+      
+      if (error) {
+        console.error("Erro ao buscar faturas para a conta:", error);
+        toast.error("Erro ao buscar faturas para a conta");
+        return [];
+      }
+      
+      // Convert to Invoice type
+      return (data || []).map(invoice => {
+        const { accounts, account_id, due_day, ...rest } = invoice;
+        return {
+          ...rest,
+          account_id,
+          account: accounts
+            ? {
+                id: accounts.id,
+                name: accounts.name,
+                type: accounts.type,
+                color: accounts.color,
+              }
+            : undefined,
+          due_day: new Date(due_day),
+        } as Invoice;
+      });
+    } catch (error) {
+      console.error("Erro ao buscar faturas para a conta:", error);
+      toast.error("Erro ao buscar faturas para a conta");
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const fetchInvoiceDetails = useCallback(async (id: string): Promise<Invoice | null> => {
     try {
       setLoading(true);
@@ -103,8 +152,9 @@ export function InvoiceProvider({ children }: InvoiceProviderProps) {
     loading,
     fetchInvoiceDetails,
     getFilteredInvoices,
+    getAllInvoicesForAccount,
     currentPeriod: requestedPeriod
-  }), [invoices, loading, fetchInvoiceDetails, getFilteredInvoices, requestedPeriod]);
+  }), [invoices, loading, fetchInvoiceDetails, getFilteredInvoices, getAllInvoicesForAccount, requestedPeriod]);
 
   return (
     <InvoiceContext.Provider value={value}>

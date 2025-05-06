@@ -35,6 +35,7 @@ export async function fetchTransactions(startDate?: Date, endDate?: Date): Promi
       account_id, 
       destinationAccounts,
       destination_account_id,
+      invoice_id,
       ...rest 
     } = transaction;
     
@@ -51,6 +52,7 @@ export async function fetchTransactions(startDate?: Date, endDate?: Date): Promi
       destinationAccount: destinationAccounts?.name || '',
       destinationAccountId: destination_account_id || '',
       destinationAccountColor: destinationAccounts?.color || '',
+      invoice_id: invoice_id || undefined,
     };
   });
 }
@@ -71,7 +73,8 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     wedding_category: transaction.weddingCategory,
     category_id: transaction.categoryId,
     account_id: transaction.accountId,
-    destination_account_id: transaction.destinationAccountId
+    destination_account_id: transaction.destinationAccountId,
+    invoice_id: transaction.invoice_id
   };
   
   console.log('Sending transaction to Supabase:', JSON.stringify(formattedTransaction, null, 2));
@@ -100,6 +103,7 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     account_id,
     destinationAccounts,
     destination_account_id,
+    invoice_id,
     ...restData 
   } = data;
   
@@ -116,6 +120,7 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     destinationAccount: destinationAccounts?.name || '',
     destinationAccountId: destination_account_id || '',
     destinationAccountColor: destinationAccounts?.color || '',
+    invoice_id: invoice_id || undefined,
   };
 }
 
@@ -132,7 +137,8 @@ export async function updateTransaction(id: string, transaction: Partial<Transac
     ...(transaction.weddingCategory !== undefined && { wedding_category: transaction.weddingCategory }),
     ...(transaction.categoryId !== undefined && { category_id: transaction.categoryId }),
     ...(transaction.accountId !== undefined && { account_id: transaction.accountId }),
-    ...(transaction.destinationAccountId !== undefined && { destination_account_id: transaction.destinationAccountId })
+    ...(transaction.destinationAccountId !== undefined && { destination_account_id: transaction.destinationAccountId }),
+    ...(transaction.invoice_id !== undefined && { invoice_id: transaction.invoice_id })
   };
 
   const { error } = await supabase

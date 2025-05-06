@@ -1,6 +1,7 @@
 import { NubankImporter } from "./nubank-importer";
 import { InterImporter } from "./inter-importer";
 import { GenericImporter } from "./generic-importer";
+import { NubankCreditImporter } from "./nubank-credit-importer";
 import { Transaction } from "@/types";
 
 export interface TransactionImporter<T = unknown> {
@@ -9,7 +10,8 @@ export interface TransactionImporter<T = unknown> {
     parsedTransactions: T[],
     accountId: string,
     accountName: string,
-    accountColor?: string
+    accountColor?: string,
+    invoiceId?: string | undefined
   ): Omit<Transaction, "id">[];
 }
 
@@ -19,6 +21,7 @@ export interface ImporterInfo {
   description: string;
   institution: string;
   importer: TransactionImporter<unknown>;
+  requiresInvoice?: boolean;
 }
 
 export const availableImporters: ImporterInfo[] = [
@@ -28,6 +31,14 @@ export const availableImporters: ImporterInfo[] = [
     description: "Importar transações da conta corrente do Nubank",
     institution: "Nubank",
     importer: NubankImporter
+  },
+  {
+    id: "nubank_credit",
+    name: "Nubank crédito",
+    description: "Importar transações do cartão de crédito do Nubank",
+    institution: "Nubank",
+    importer: NubankCreditImporter,
+    requiresInvoice: true
   },
   {
     id: "inter",
