@@ -7,7 +7,8 @@ export async function fetchTransactions(startDate?: Date, endDate?: Date): Promi
     .select(`
       *,
       categories:category_id (id, name, type, color),
-      accounts:account_id (id, name, type, color)
+      accounts:account_id (id, name, type, color),
+      destinationAccounts:destination_account_id (id, name, type, color)
     `);
   
   if (startDate) {
@@ -26,7 +27,17 @@ export async function fetchTransactions(startDate?: Date, endDate?: Date): Promi
   }
 
   return (data || []).map(transaction => {
-    const { wedding_category, categories, category_id, accounts, account_id, ...rest } = transaction;
+    const { 
+      wedding_category, 
+      categories, 
+      category_id, 
+      accounts, 
+      account_id, 
+      destinationAccounts,
+      destination_account_id,
+      ...rest 
+    } = transaction;
+    
     return {
       ...rest,
       date: new Date(transaction.date),
@@ -36,7 +47,10 @@ export async function fetchTransactions(startDate?: Date, endDate?: Date): Promi
       categoryColor: categories?.color || '',
       account: accounts?.name || '',
       accountId: account_id,
-      accountColor: accounts?.color || ''
+      accountColor: accounts?.color || '',
+      destinationAccount: destinationAccounts?.name || '',
+      destinationAccountId: destination_account_id || '',
+      destinationAccountColor: destinationAccounts?.color || '',
     };
   });
 }
@@ -47,14 +61,17 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     return null;
   }
 
-  const { weddingCategory, categoryId, accountId, ...rest } = transaction;
-  
+  // Create a new object with only the fields we want to send to the database
   const formattedTransaction = {
-    ...rest,
+    type: transaction.type,
+    description: transaction.description,
+    amount: transaction.amount,
+    class: transaction.class,
     date: transaction.date instanceof Date ? transaction.date.toISOString() : transaction.date,
-    wedding_category: weddingCategory,
-    category_id: categoryId,
-    account_id: accountId
+    wedding_category: transaction.weddingCategory,
+    category_id: transaction.categoryId,
+    account_id: transaction.accountId,
+    destination_account_id: transaction.destinationAccountId
   };
   
   console.log('Sending transaction to Supabase:', JSON.stringify(formattedTransaction, null, 2));
@@ -65,7 +82,8 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     .select(`
       *,
       categories:category_id (id, name, type, color),
-      accounts:account_id (id, name, type, color)
+      accounts:account_id (id, name, type, color),
+      destinationAccounts:destination_account_id (id, name, type, color)
     `)
     .single();
 
@@ -74,7 +92,16 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     return null;
   }
 
-  const { wedding_category, categories, category_id, accounts, account_id, ...restData } = data;
+  const { 
+    wedding_category, 
+    categories, 
+    category_id, 
+    accounts, 
+    account_id,
+    destinationAccounts,
+    destination_account_id,
+    ...restData 
+  } = data;
   
   return {
     ...restData,
@@ -85,19 +112,27 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     categoryColor: categories?.color || '',
     account: accounts?.name || '',
     accountId: account_id,
-    accountColor: accounts?.color || ''
+    accountColor: accounts?.color || '',
+    destinationAccount: destinationAccounts?.name || '',
+    destinationAccountId: destination_account_id || '',
+    destinationAccountColor: destinationAccounts?.color || '',
   };
 }
 
 export async function updateTransaction(id: string, transaction: Partial<Transaction>): Promise<boolean> {
-  const { weddingCategory, categoryId, accountId, ...rest } = transaction;
-  
+  // Create a new object with only the fields we want to send to the database
   const formattedTransaction = {
-    ...rest,
-    date: transaction.date instanceof Date ? transaction.date.toISOString() : transaction.date,
-    ...(weddingCategory !== undefined && { wedding_category: weddingCategory }),
-    ...(categoryId !== undefined && { category_id: categoryId }),
-    ...(accountId !== undefined && { account_id: accountId })
+    ...(transaction.type !== undefined && { type: transaction.type }),
+    ...(transaction.description !== undefined && { description: transaction.description }),
+    ...(transaction.amount !== undefined && { amount: transaction.amount }),
+    ...(transaction.class !== undefined && { class: transaction.class }),
+    ...(transaction.date !== undefined && { 
+      date: transaction.date instanceof Date ? transaction.date.toISOString() : transaction.date 
+    }),
+    ...(transaction.weddingCategory !== undefined && { wedding_category: transaction.weddingCategory }),
+    ...(transaction.categoryId !== undefined && { category_id: transaction.categoryId }),
+    ...(transaction.accountId !== undefined && { account_id: transaction.accountId }),
+    ...(transaction.destinationAccountId !== undefined && { destination_account_id: transaction.destinationAccountId })
   };
 
   const { error } = await supabase

@@ -1,5 +1,6 @@
 import { NubankImporter } from "./nubank-importer";
 import { InterImporter } from "./inter-importer";
+import { GenericImporter } from "./generic-importer";
 import { Transaction } from "@/types";
 
 export interface TransactionImporter<T = unknown> {
@@ -34,6 +35,13 @@ export const availableImporters: ImporterInfo[] = [
     description: "Importar transações da conta ou cartão do Banco Inter",
     institution: "Banco Inter",
     importer: InterImporter
+  },
+  {
+    id: "generic",
+    name: "Importador Genérico",
+    description: "Importar transações de qualquer fonte em formato CSV",
+    institution: "Qualquer Banco",
+    importer: GenericImporter
   }
 ];
 

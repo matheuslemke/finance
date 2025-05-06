@@ -10,7 +10,7 @@ import { useAccounts } from "@/context/account-context";
 import { useCategories } from "@/context/category-context";
 import { useTransactions } from "@/context/transaction-context";
 import { Upload, FileText, AlertCircle, CheckCircle2, ChevronLeft, Save, Loader2, CreditCard, Info, Trash2, Check } from "lucide-react";
-import { TransactionClass } from "@/types";
+import { TransactionClass, TransactionType, Account } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -23,6 +23,12 @@ interface ParsedTransaction {
   category?: string;
   categoryId?: string;
   class?: TransactionClass | string;
+  isTransfer?: boolean;
+  destinationAccountId?: string;
+  sourceAccountId?: string;
+  sourceAccount?: string;
+  destinationAccount?: string;
+  weddingCategory?: string;
   [key: string]: unknown;
 }
 
@@ -49,8 +55,16 @@ interface TransactionRowProps {
   onDelete: (index: number) => void;
   categories: Category[];
   classOptions: Record<TransactionClass, string>;
+  accounts: Account[];
   onCategoryChange: (index: number, value: string) => void;
   onClassChange: (index: number, value: TransactionClass) => void;
+  setTransferModalState: React.Dispatch<React.SetStateAction<{
+    isOpen: boolean;
+    index: number | null;
+    isIncoming: boolean;
+    sourceAccountId: string;
+    destinationAccountId: string;
+  }>>;
 }
 
 const TransactionRow = memo(({ 
@@ -61,8 +75,10 @@ const TransactionRow = memo(({
   onDelete,
   categories,
   classOptions,
+  accounts,
   onCategoryChange,
-  onClassChange
+  onClassChange,
+  setTransferModalState
 }: TransactionRowProps) => {
   // Performance monitoring
   console.log(`Rendering row ${index}`);
@@ -87,6 +103,14 @@ const TransactionRow = memo(({
          transaction.Tipo.toLowerCase().includes('pagamento') || 
          transaction.Tipo.toLowerCase().includes('transferência enviada'))
     };
+  } else if (selectedImporterId === "generic") {
+    transactionData = {
+      date: String(transaction.date || ""),
+      description: String(transaction.description || ""),
+      value: String(transaction.amount || "0"),
+      isNegative: typeof transaction.amount === 'string' && 
+        (transaction.amount.startsWith('-') || parseFloat(transaction.amount) < 0)
+    };
   } else {
     transactionData = {
       date: "Data não encontrada",
@@ -97,15 +121,15 @@ const TransactionRow = memo(({
   }
   
   return (
-    <tr className={transaction.categoryId ? "border-b bg-blue-50/50 dark:bg-blue-950/30" : "border-b"}>
+    <tr className={transaction.categoryId || transaction.isTransfer ? "border-b bg-blue-50/50 dark:bg-blue-950/30" : "border-b"}>
       <td className="py-3 px-4 text-sm">
         {transactionData.date}
       </td>
       <td className="py-3 px-4 text-sm max-w-xs relative">
         <div className="flex items-center">
-          {transaction.categoryId && transaction.class && (
+          {(transaction.categoryId && transaction.class) || (transaction.isTransfer && transaction.destinationAccountId) ? (
             <Check className="mr-2 flex-shrink-0 text-blue-500 h-3 w-3" aria-hidden="true" />
-          )}
+          ) : null}
           
           <div className="w-full flex justify-between items-center">
             <span 
@@ -122,21 +146,56 @@ const TransactionRow = memo(({
         {transactionData.isNegative ? '-' : '+'}R${Math.abs(parseFloat(transactionData.value.replace(/[^\d.-]/g, '') || '0')).toFixed(2)}
       </td>
       <td className="py-3 px-4 text-sm">
-        <Select 
-          value={transaction.category || ""} 
-          onValueChange={(value) => onCategoryChange(index, value)}
-        >
-          <SelectTrigger className="h-8 w-full">
-            <SelectValue placeholder="Selecione" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map(category => (
-              <SelectItem key={category.id} value={category.name}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Button 
+              variant={transaction.isTransfer ? "default" : "outline"} 
+              size="sm"
+              className="text-xs"
+              onClick={() => {
+                const isNegative = transactionData.isNegative;
+                const isIncoming = !isNegative;
+                
+                setTransferModalState({
+                  isOpen: true,
+                  index,
+                  isIncoming,
+                  sourceAccountId: isIncoming ? "" : "9dc32abe-0ab4-4e3a-a792-a0992e737365",
+                  destinationAccountId: isIncoming ? "9dc32abe-0ab4-4e3a-a792-a0992e737365" : transaction.destinationAccountId || ""
+                });
+              }}
+              disabled={accounts.length < 2}
+              title={accounts.length < 2 ? "É necessário ter pelo menos 2 contas para fazer transferências" : ""}
+            >
+              {transaction.isTransfer ? 'Transferência' : 'Marcar como Transferência'}
+            </Button>
+            
+            {transaction.isTransfer && transaction.sourceAccount && transaction.destinationAccount && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span>{transactionData.isNegative ? 'Saída' : 'Entrada'}</span>
+                <span>
+                  • {String(transaction.sourceAccount)} → {String(transaction.destinationAccount)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <Select 
+            value={transaction.category || ""} 
+            onValueChange={(value) => onCategoryChange(index, value)}
+          >
+            <SelectTrigger className="h-8 w-full">
+              <SelectValue placeholder="Selecione categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map(category => (
+                <SelectItem key={category.id} value={category.name}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </td>
       <td className="py-3 px-4 text-sm">
         <Select 
@@ -144,7 +203,7 @@ const TransactionRow = memo(({
           onValueChange={(value) => onClassChange(index, value as TransactionClass)}
         >
           <SelectTrigger className="h-8 w-full">
-            <SelectValue placeholder="Selecione" />
+            <SelectValue placeholder="Selecione classe" />
           </SelectTrigger>
           <SelectContent>
             {Object.entries(classOptions).map(([value, label]) => (
@@ -180,7 +239,6 @@ export default function ImportTransactionsPage() {
   const { addTransaction } = useTransactions();
   
   const [selectedImporterId, setSelectedImporterId] = useState<string>("nubank");
-  const [selectedAccount, setSelectedAccount] = useState<string>("");
   const [importStep, setImportStep] = useState<"select-importer" | "upload" | "categorize" | "success">("select-importer");
   const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
   const [isImporting, setIsImporting] = useState(false);
@@ -197,6 +255,21 @@ export default function ImportTransactionsPage() {
     index: null,
     value: "",
     originalValue: ""
+  });
+  
+  // Adicionar state para o modal de transferência
+  const [transferModalState, setTransferModalState] = useState<{
+    isOpen: boolean;
+    index: number | null;
+    isIncoming: boolean;  // true = valor positivo, false = valor negativo
+    sourceAccountId: string;
+    destinationAccountId: string;
+  }>({
+    isOpen: false,
+    index: null,
+    isIncoming: false,
+    sourceAccountId: "",
+    destinationAccountId: ""
   });
   
   // Current selected importer
@@ -231,22 +304,44 @@ export default function ImportTransactionsPage() {
         
         // Determine if the transaction is positive based on importer type
         let isPositive = false;
+        let description = "";
         
         if (selectedImporterId === "nubank") {
           isPositive = typeof transObj.Valor === 'string' && !transObj.Valor.startsWith('-');
+          description = String(transObj.Descrição || "");
         } else if (selectedImporterId === "inter") {
           isPositive = !(typeof transObj.Tipo === 'string' && 
             (transObj.Tipo.toLowerCase().includes('saque') || 
              transObj.Tipo.toLowerCase().includes('pagamento') || 
              transObj.Tipo.toLowerCase().includes('transferência enviada')));
+          description = String(transObj.Descricao || "");
+        } else if (selectedImporterId === "generic") {
+          // For generic importer
+          const amount = parseFloat(String(transObj.amount || "0").replace(/[^\d.-]/g, '') || '0');
+          isPositive = amount >= 0;
+          description = String(transObj.description || "");
+          
+          // If type is explicitly set, use that instead
+          if (typeof transObj.type === 'string') {
+            const typeStr = transObj.type.toLowerCase();
+            if (typeStr.includes('income') || typeStr.includes('receita')) {
+              isPositive = true;
+            } else if (typeStr.includes('expense') || typeStr.includes('despesa')) {
+              isPositive = false;
+            } else if (typeStr.includes('transfer') || typeStr.includes('transferência')) {
+              // Set as transfer
+              return {
+                ...transObj,
+                isTransfer: true,
+                categoryId: "",
+                category: "",
+                class: ""
+              } as ParsedTransaction;
+            }
+          }
+        } else {
+          description = "";
         }
-        
-        // Get description field based on importer type
-        const description = selectedImporterId === "nubank" 
-          ? String(transObj.Descrição || "")
-          : selectedImporterId === "inter"
-            ? String(transObj.Descricao || "")
-            : "";
         
         // Apply mapping rules if description matches any patterns
         const mapping = description ? mapTransactionByDescription(description) : undefined;
@@ -261,7 +356,7 @@ export default function ImportTransactionsPage() {
         return {
           ...transObj,
           // Apply category and class from mapping if available
-          category: mappedCategoryName,
+          category: mappedCategoryName || (selectedImporterId === "generic" ? String(transObj.category || "") : ""),
           categoryId: mapping?.categoryId || "",
           // If no mapping found, use positive amount rule
           class: mapping?.class || (isPositive ? "income" : undefined)
@@ -370,51 +465,151 @@ export default function ImportTransactionsPage() {
     }));
   };
   
+  const handleTransferChange = (index: number, isTransfer: boolean, sourceAccountId?: string, destinationAccountId?: string) => {
+    setParsedTransactions(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        isTransfer,
+        // Se for transferência, adicionar sourceAccountId e destinationAccountId
+        ...(isTransfer ? { 
+          sourceAccountId,
+          destinationAccountId
+        } : {
+          sourceAccountId: undefined,
+          destinationAccountId: undefined
+        })
+      };
+      return updated;
+    });
+  };
+  
   const handleImportTransactions = async () => {
-    if (!selectedAccount || !selectedImporter) {
+    if (!selectedImporter) {
       toast.error("Selecione uma conta para continuar");
       return;
     }
     
-    const account = accounts.find(acc => acc.id === selectedAccount);
+    const account = accounts.find(acc => acc.id === "9dc32abe-0ab4-4e3a-a792-a0992e737365");
     if (!account) {
-      toast.error("Conta inválida");
+      toast.error("Conta Nuconta não encontrada");
       return;
     }
     
-    // Check if all transactions have category and class
-    const uncategorized = parsedTransactions.find(t => !t.category || !t.class);
-    if (uncategorized) {
-      toast.error("Todas as transações precisam ter categoria e classe definidas");
+    // Checar validações
+    const hasInvalidTransactions = parsedTransactions.some(t => {
+      if (t.isTransfer) {
+        // Para transferências, verifica categoria, classe e contas de origem/destino
+        const needsSourceAccount = !t.sourceAccountId && parseFloat(String(t.Valor || t.amount || "0").replace(/[^\d.-]/g, '') || '0') > 0;
+        const needsDestAccount = !t.destinationAccountId && parseFloat(String(t.Valor || t.amount || "0").replace(/[^\d.-]/g, '') || '0') < 0;
+        
+        return !t.category || !t.class || (needsSourceAccount || needsDestAccount);
+      } else {
+        // Para outras transações, verifica categoria e classe
+        return !t.category || !t.class;
+      }
+    });
+    
+    if (hasInvalidTransactions) {
+      toast.error("Todas as transações precisam ter categoria e classe definidas. Para transferências, configure corretamente as contas de origem e destino.");
       return;
     }
     
     setIsImporting(true);
     
     try {
-      const transactionsToImport = selectedImporter.importer.convertToTransactions(
-        parsedTransactions,
-        account.id,
-        account.name,
-        account.color
-      );
+      // Para transações normais, usar o conversor padrão
+      const regularTransactions = parsedTransactions.filter(t => !t.isTransfer);
+      const transferTransactions = parsedTransactions.filter(t => t.isTransfer);
       
-      // Add categoryId to each transaction if not already set by mapping
-      for (const transaction of transactionsToImport) {
-        // If categoryId is not set, look it up from categories
-        if (!transaction.categoryId && transaction.category) {
-          const category = categories.find(c => c.name === transaction.category);
-          if (category) {
-            transaction.categoryId = category.id;
-          } else {
-            toast.error(`Categoria '${transaction.category}' não encontrada`);
-            setIsImporting(false);
-            return;
+      const transactionsToImport = [];
+      
+      // Converter transações normais
+      if (regularTransactions.length > 0) {
+        const regularConverted = selectedImporter.importer.convertToTransactions(
+          regularTransactions,
+          account.id,
+          account.name,
+          account.color
+        );
+        
+        // Adicionar categoryId para cada transação
+        for (const transaction of regularConverted) {
+          if (!transaction.categoryId && transaction.category) {
+            const category = categories.find(c => c.name === transaction.category);
+            if (category) {
+              transaction.categoryId = category.id;
+            }
           }
+        }
+        
+        transactionsToImport.push(...regularConverted);
+      }
+      
+      // Processar transferências
+      if (transferTransactions.length > 0) {
+        for (const transfer of transferTransactions) {
+          // Obter os dados básicos da transação
+          let amount = 0;
+          let date = new Date();
+          let description = "";
+          let isIncoming = false;
+          
+          if (selectedImporterId === "nubank") {
+            amount = Math.abs(parseFloat(String(transfer.Valor).replace(/[^\d.-]/g, '') || '0'));
+            date = new Date(String(transfer.Data));
+            description = String(transfer.Descrição || "Transferência");
+            isIncoming = typeof transfer.Valor === 'string' && !transfer.Valor.startsWith('-');
+          } else if (selectedImporterId === "inter") {
+            amount = Math.abs(parseFloat(String(transfer.Valor).replace(/[^\d.-]/g, '') || '0'));
+            date = new Date(String(transfer.Data));
+            description = String(transfer.Descricao || "Transferência");
+            isIncoming = !(typeof transfer.Tipo === 'string' && 
+              (transfer.Tipo.toLowerCase().includes('saque') || 
+               transfer.Tipo.toLowerCase().includes('pagamento') || 
+               transfer.Tipo.toLowerCase().includes('transferência enviada')));
+          } else if (selectedImporterId === "generic") {
+            amount = Math.abs(parseFloat(String(transfer.amount).replace(/[^\d.-]/g, '') || '0'));
+            date = new Date(String(transfer.date));
+            description = String(transfer.description || "Transferência");
+            isIncoming = parseFloat(String(transfer.amount).replace(/[^\d.-]/g, '') || '0') >= 0;
+          }
+          
+          // Buscar as contas de origem e destino
+          const sourceAccountId = isIncoming ? transfer.sourceAccountId : account.id;
+          const destinationAccountId = isIncoming ? account.id : transfer.destinationAccountId;
+          
+          const sourceAccount = accounts.find(acc => acc.id === sourceAccountId);
+          const destAccount = accounts.find(acc => acc.id === destinationAccountId);
+          
+          if (!sourceAccount || !destAccount) continue;
+          
+          // Encontrar a categoria correspondente
+          const category = categories.find(c => c.name === transfer.category);
+          
+          // Criar transação de transferência com tipos corrigidos
+          const transferTransaction = {
+            type: "transfer" as TransactionType,
+            date,
+            description,
+            category: transfer.category || "Transferência",
+            categoryId: category?.id || "",
+            amount,
+            accountId: sourceAccountId as string,
+            account: sourceAccount.name,
+            accountColor: sourceAccount.color,
+            class: (transfer.class as TransactionClass) || "essential",
+            destinationAccountId: destinationAccountId as string,
+            destinationAccount: destAccount.name,
+            destinationAccountColor: destAccount.color,
+            weddingCategory: transfer.weddingCategory as string | undefined
+          };
+          
+          transactionsToImport.push(transferTransaction);
         }
       }
       
-      // Add each transaction
+      // Adicionar cada transação
       for (const transaction of transactionsToImport) {
         await addTransaction(transaction);
       }
@@ -423,7 +618,7 @@ export default function ImportTransactionsPage() {
       toast.success(`${transactionsToImport.length} transações importadas com sucesso`);
     } catch (error) {
       console.error("Error importing transactions:", error);
-      toast.error("Erro ao importar transações");
+      toast.error(`Erro ao importar transações: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsImporting(false);
     }
@@ -431,7 +626,6 @@ export default function ImportTransactionsPage() {
   
   const resetImport = useCallback(() => {
     setParsedTransactions([]);
-    setSelectedAccount("");
     setImportStep("select-importer");
     setImportError(null);
     if (fileInputRef.current) {
@@ -496,8 +690,10 @@ export default function ImportTransactionsPage() {
         onDelete={handleDeleteClick}
         categories={categories}
         classOptions={classOptions}
+        accounts={accounts}
         onCategoryChange={handleCategoryChange}
         onClassChange={handleClassChange}
+        setTransferModalState={setTransferModalState}
       />
     ));
     console.timeEnd('tableRows calculation');
@@ -506,7 +702,9 @@ export default function ImportTransactionsPage() {
     parsedTransactions,
     selectedImporterId,
     importStep,
-    categories
+    categories,
+    accounts,
+    setTransferModalState
   ]);
   
   const renderImporterSelection = () => (
@@ -588,12 +786,27 @@ export default function ImportTransactionsPage() {
         
         <div className="mt-6">
           <h3 className="font-medium mb-2">Instruções</h3>
-          <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-            <li>Exporte as transações do {selectedImporter?.name} em formato CSV</li>
-            <li>Selecione o arquivo exportado</li>
-            <li>Categorize as transações</li>
-            <li>Confirme a importação</li>
-          </ol>
+          {selectedImporterId === "generic" ? (
+            <>
+              <p className="text-sm text-muted-foreground mb-2">
+                Para o Importador Genérico, o arquivo CSV deve conter as seguintes colunas:
+              </p>
+              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+                <li><strong>Data</strong> - Data da transação (formato: YYYY-MM-DD, DD/MM/YYYY)</li>
+                <li><strong>Descrição</strong> - Descrição da transação</li>
+                <li><strong>Valor</strong> - Valor da transação (use sinal negativo para despesas)</li>
+                <li><em>Categoria</em> - (Opcional) Categoria da transação</li>
+                <li><em>Tipo</em> - (Opcional) Tipo: income, expense, transfer</li>
+              </ul>
+            </>
+          ) : (
+            <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+              <li>Exporte as transações do {selectedImporter?.name} em formato CSV</li>
+              <li>Selecione o arquivo exportado</li>
+              <li>Categorize as transações</li>
+              <li>Confirme a importação</li>
+            </ol>
+          )}
         </div>
         
         <div className="mt-6 flex justify-between">
@@ -631,22 +844,6 @@ export default function ImportTransactionsPage() {
             </Alert>
           )}
           <div className="flex flex-col gap-4 mb-6">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Conta de Destino</label>
-              <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma conta" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts.map(account => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
             <div className="flex justify-between items-center">
               <div className="text-sm text-muted-foreground">
                 Total de transações para importação: <span className="font-medium">{parsedTransactions.length}</span>
@@ -689,7 +886,7 @@ export default function ImportTransactionsPage() {
             </Button>
             <Button 
               onClick={handleImportTransactions}
-              disabled={isImporting || !selectedAccount}
+              disabled={isImporting}
             >
               {isImporting ? (
                 <>
@@ -800,6 +997,131 @@ export default function ImportTransactionsPage() {
     );
   };
   
+  // Adicionar o modal de transferência
+  const TransferModal = () => {
+    if (!transferModalState.isOpen) return null;
+    
+    const index = transferModalState.index as number;
+    const isIncoming = transferModalState.isIncoming;
+    
+    // Obter os dados da transação
+    let transactionDescription = "";
+    if (parsedTransactions[index]) {
+      if (selectedImporterId === "nubank") {
+        transactionDescription = String(parsedTransactions[index].Descrição || "");
+      } else if (selectedImporterId === "inter") {
+        transactionDescription = String(parsedTransactions[index].Descricao || "");
+      } else if (selectedImporterId === "generic") {
+        transactionDescription = String(parsedTransactions[index].description || "");
+      }
+    }
+    
+    return (
+      <div 
+        className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"
+        onClick={(e) => {
+          // Close when clicking the backdrop
+          if (e.target === e.currentTarget) {
+            setTransferModalState(prev => ({...prev, isOpen: false}));
+          }
+        }}
+      >
+        <div className="bg-background p-6 rounded-lg shadow-lg w-full max-w-md">
+          <h3 className="text-lg font-medium mb-4">Configurar Transferência</h3>
+          
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Transação: <span className="font-medium">{transactionDescription}</span>
+              </p>
+              
+              {isIncoming ? (
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Conta de Origem (enviou o dinheiro)</label>
+                  <Select 
+                    value={transferModalState.sourceAccountId} 
+                    onValueChange={(value) => setTransferModalState(prev => ({...prev, sourceAccountId: value}))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a conta de origem" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">A conta de destino é a conta que você selecionou para importação</p>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Conta de Destino (recebeu o dinheiro)</label>
+                  <Select 
+                    value={transferModalState.destinationAccountId} 
+                    onValueChange={(value) => setTransferModalState(prev => ({...prev, destinationAccountId: value}))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a conta de destino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">A conta de origem é a conta que você selecionou para importação</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setTransferModalState(prev => ({...prev, isOpen: false}))}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (transferModalState.index !== null) {
+                    const sourceId = transferModalState.isIncoming ? transferModalState.sourceAccountId : "9dc32abe-0ab4-4e3a-a792-a0992e737365";
+                    const destId = transferModalState.isIncoming ? "9dc32abe-0ab4-4e3a-a792-a0992e737365" : transferModalState.destinationAccountId;
+                    
+                    if (transferModalState.isIncoming && !sourceId) {
+                      toast.error("Selecione a conta de origem");
+                      return;
+                    }
+                    
+                    if (!transferModalState.isIncoming && !destId) {
+                      toast.error("Selecione a conta de destino");
+                      return;
+                    }
+                    
+                    handleTransferChange(
+                      transferModalState.index,
+                      true,
+                      sourceId,
+                      destId
+                    );
+                    
+                    // Fechar o modal
+                    setTransferModalState(prev => ({...prev, isOpen: false}));
+                  }
+                }}
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -859,8 +1181,9 @@ export default function ImportTransactionsPage() {
         </DialogContent>
       </Dialog>
       
-      {/* Add the floating editor */}
+      {/* Add the floating editors */}
       <DescriptionEditor />
+      <TransferModal />
     </DashboardLayout>
   );
 } 

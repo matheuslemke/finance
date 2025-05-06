@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowUpRight, ArrowDownRight, Search, Filter, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, Filter, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ArrowRightLeft, ArrowRight } from "lucide-react";
 import { useTransactions } from "@/context/transaction-context";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
 import { format, addMonths, subMonths } from "date-fns";
@@ -165,17 +165,21 @@ export default function TransactionsPage() {
             <div className="flex items-center">
               {transaction.type === "income" ? (
                 <ArrowUpRight className="mr-1 h-5 w-5 text-green-500" />
-              ) : (
+              ) : transaction.type === "expense" ? (
                 <ArrowDownRight className="mr-1 h-5 w-5 text-red-500" />
+              ) : (
+                <ArrowRightLeft className="mr-1 h-5 w-5 text-blue-500" />
               )}
               <span
                 className={
                   transaction.type === "income"
                     ? "text-green-500 font-medium text-lg"
-                    : "text-red-500 font-medium text-lg"
+                    : transaction.type === "expense"
+                    ? "text-red-500 font-medium text-lg"
+                    : "text-blue-500 font-medium text-lg"
                 }
               >
-                {transaction.type === "income" ? "+" : "-"}R$
+                {transaction.type === "income" ? "+" : transaction.type === "expense" ? "-" : ""}R$
                 {transaction.amount.toFixed(2)}
               </span>
             </div>
@@ -185,58 +189,88 @@ export default function TransactionsPage() {
             <h3 className="font-medium text-lg" title={transaction.description}>{transaction.description}</h3>
           </div>
           
-          <div className="grid grid-cols-2 gap-x-3 mb-2">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Categoria</p>
-              <Chip 
-                text={transaction.category} 
-                bgColor="bg-gray-100"
-                textColor="text-gray-800"
-              />
-            </div>
-            
-            {transaction.weddingCategory ? (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Cat. Casamento</p>
+          {transaction.type === "transfer" ? (
+            <div className="mb-2 flex items-center gap-2">
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground mb-1">De</p>
                 <Chip 
-                  text={transaction.weddingCategory} 
-                  bgColor="bg-pink-100"
-                  textColor="text-pink-800"
+                  text={transaction.account} 
+                  bgColor={transaction.accountColor ? "" : "bg-blue-50"}
+                  textColor={transaction.accountColor ? "text-white" : "text-blue-700"}
+                  className="account-chip"
+                  style={transaction.accountColor ? { backgroundColor: transaction.accountColor } : {}}
                 />
               </div>
-            ) : (
-              <div></div>
-            )}
-          </div>
-          
-          <div className="grid grid-cols-2 gap-x-3 mb-2">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Conta</p>
-              {transaction.accountColor ? (
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground mb-1">Para</p>
                 <Chip 
-                  text={transaction.account} 
-                  bgColor={accountStyle.bg}
-                  textColor={accountStyle.text}
+                  text={transaction.destinationAccount || ""} 
+                  bgColor={transaction.destinationAccountColor ? "" : "bg-blue-50"}
+                  textColor={transaction.destinationAccountColor ? "text-white" : "text-blue-700"}
                   className="account-chip"
-                  style={{ backgroundColor: transaction.accountColor }}
+                  style={transaction.destinationAccountColor ? { backgroundColor: transaction.destinationAccountColor } : {}}
                 />
-              ) : (
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-x-3 mb-2">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Categoria</p>
                 <Chip 
-                  text={transaction.account} 
-                  bgColor="bg-blue-50"
-                  textColor="text-blue-700"
+                  text={transaction.category} 
+                  bgColor="bg-gray-100"
+                  textColor="text-gray-800"
                 />
+              </div>
+              
+              {transaction.weddingCategory ? (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Cat. Casamento</p>
+                  <Chip 
+                    text={transaction.weddingCategory} 
+                    bgColor="bg-pink-100"
+                    textColor="text-pink-800"
+                  />
+                </div>
+              ) : (
+                <div></div>
               )}
             </div>
+          )}
+          
+          <div className="grid grid-cols-2 gap-x-3 mb-2">
+            {transaction.type !== "transfer" && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Conta</p>
+                {transaction.accountColor ? (
+                  <Chip 
+                    text={transaction.account} 
+                    bgColor={accountStyle.bg}
+                    textColor={accountStyle.text}
+                    className="account-chip"
+                    style={{ backgroundColor: transaction.accountColor }}
+                  />
+                ) : (
+                  <Chip 
+                    text={transaction.account} 
+                    bgColor="bg-blue-50"
+                    textColor="text-blue-700"
+                  />
+                )}
+              </div>
+            )}
             
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Classe</p>
-              <Chip 
-                text={getClassDisplayName(transaction.class)} 
-                bgColor="bg-gray-100"
-                textColor="text-gray-800"
-              />
-            </div>
+            {transaction.type !== "transfer" && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Classe</p>
+                <Chip 
+                  text={getClassDisplayName(transaction.class)} 
+                  bgColor="bg-gray-100"
+                  textColor="text-gray-800"
+                />
+              </div>
+            )}
           </div>
           
           <div className="flex justify-end">
@@ -370,11 +404,15 @@ export default function TransactionsPage() {
                                 </td>
                                 <td className="py-3 px-4 text-sm max-w-[200px] truncate" title={transaction.description}>{transaction.description}</td>
                                 <td className="py-3 px-4 text-sm">
-                                  <Chip 
-                                    text={transaction.category} 
-                                    bgColor="bg-gray-100"
-                                    textColor="text-gray-800"
-                                  />
+                                  {transaction.type !== "transfer" ? (
+                                    <Chip 
+                                      text={transaction.category} 
+                                      bgColor="bg-gray-100"
+                                      textColor="text-gray-800"
+                                    />
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
                                 </td>
                                 <td className="py-3 px-4 text-sm">
                                   {transaction.weddingCategory ? (
@@ -388,44 +426,72 @@ export default function TransactionsPage() {
                                   )}
                                 </td>
                                 <td className="py-3 px-4 text-sm">
-                                  {transaction.accountColor ? (
-                                    <Chip 
-                                      text={transaction.account} 
-                                      bgColor={accountStyle.bg}
-                                      textColor={accountStyle.text}
-                                      className="account-chip"
-                                      style={{ backgroundColor: transaction.accountColor }}
-                                    />
+                                  {transaction.type === "transfer" ? (
+                                    <div className="flex items-center gap-1">
+                                      <Chip 
+                                        text={transaction.account} 
+                                        bgColor={transaction.accountColor ? "" : "bg-blue-50"}
+                                        textColor={transaction.accountColor ? "text-white" : "text-blue-700"}
+                                        className="account-chip"
+                                        style={transaction.accountColor ? { backgroundColor: transaction.accountColor } : {}}
+                                      />
+                                      <ArrowRight className="h-4 w-4" />
+                                      <Chip 
+                                        text={transaction.destinationAccount || ""} 
+                                        bgColor={transaction.destinationAccountColor ? "" : "bg-blue-50"}
+                                        textColor={transaction.destinationAccountColor ? "text-white" : "text-blue-700"}
+                                        className="account-chip"
+                                        style={transaction.destinationAccountColor ? { backgroundColor: transaction.destinationAccountColor } : {}}
+                                      />
+                                    </div>
                                   ) : (
-                                    <Chip 
-                                      text={transaction.account} 
-                                      bgColor="bg-blue-50"
-                                      textColor="text-blue-700"
-                                    />
+                                    transaction.accountColor ? (
+                                      <Chip 
+                                        text={transaction.account} 
+                                        bgColor={accountStyle.bg}
+                                        textColor={accountStyle.text}
+                                        className="account-chip"
+                                        style={{ backgroundColor: transaction.accountColor }}
+                                      />
+                                    ) : (
+                                      <Chip 
+                                        text={transaction.account} 
+                                        bgColor="bg-blue-50"
+                                        textColor="text-blue-700"
+                                      />
+                                    )
                                   )}
                                 </td>
                                 <td className="py-3 px-4 text-sm">
-                                  <Chip 
-                                    text={getClassDisplayName(transaction.class)} 
-                                    bgColor="bg-gray-100"
-                                    textColor="text-gray-800"
-                                  />
+                                  {transaction.type !== "transfer" ? (
+                                    <Chip 
+                                      text={getClassDisplayName(transaction.class)} 
+                                      bgColor="bg-gray-100"
+                                      textColor="text-gray-800"
+                                    />
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
                                 </td>
                                 <td className="py-3 px-4 text-sm text-right whitespace-nowrap">
                                   <div className="flex items-center justify-end">
                                     {transaction.type === "income" ? (
                                       <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
-                                    ) : (
+                                    ) : transaction.type === "expense" ? (
                                       <ArrowDownRight className="mr-1 h-4 w-4 text-red-500" />
+                                    ) : (
+                                      <ArrowRightLeft className="mr-1 h-4 w-4 text-blue-500" />
                                     )}
                                     <span
                                       className={
                                         transaction.type === "income"
                                           ? "text-green-500"
-                                          : "text-red-500"
+                                          : transaction.type === "expense"
+                                          ? "text-red-500"
+                                          : "text-blue-500"
                                       }
                                     >
-                                      {transaction.type === "income" ? "+" : "-"}R$
+                                      {transaction.type === "income" ? "+" : transaction.type === "expense" ? "-" : ""}R$
                                       {transaction.amount.toFixed(2)}
                                     </span>
                                   </div>

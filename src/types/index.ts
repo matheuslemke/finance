@@ -1,4 +1,4 @@
-export type TransactionType = "income" | "expense";
+export type TransactionType = "income" | "expense" | "transfer";
 
 export type TransactionClass = 
   | "essential" 
@@ -110,6 +110,9 @@ export interface Transaction {
   class: TransactionClass;
   amount: number;
   invoice_id?: string; // Reference to invoice
+  destinationAccountId?: string; // ID da conta de destino (para transferências)
+  destinationAccount?: string; // Nome da conta de destino
+  destinationAccountColor?: string; // Cor da conta de destino
 }
 
 export interface Invoice {
