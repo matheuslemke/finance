@@ -10,9 +10,19 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import { Transaction } from "@/types";
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const { transactions, loading, addTransaction } = useTransactions();
+  const [isClient, setIsClient] = useState(false);
+  const [today, setToday] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    setToday(currentDate);
+  }, []);
 
   const totalIncome = transactions
     .filter(t => t.type === "income")
@@ -27,17 +37,21 @@ export default function Home() {
   const recentTransactions = [...transactions]
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .slice(0, 5);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   
-  const upcomingBills = transactions
+  const upcomingBills = today ? transactions
     .filter(t => t.type === "expense" && t.date > today)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .slice(0, 4);
+    .slice(0, 4) : [];
 
   const handleAddTransaction = async (transaction: Omit<Transaction, "id">) => {
     await addTransaction(transaction);
+  };
+
+  const formatDateSafe = (date: Date) => {
+    if (!isClient) {
+      return date.toLocaleDateString('pt-BR');
+    }
+    return format(date, "dd 'de' MMM 'de' yyyy", { locale: ptBR });
   };
 
   if (loading) {
@@ -145,7 +159,7 @@ export default function Home() {
                         <div>
                           <p className="font-medium text-sm truncate">{transaction.description}</p>
                           <p className="text-xs text-muted-foreground">
-                            {format(transaction.date, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}
+                            {formatDateSafe(transaction.date)}
                           </p>
                         </div>
                       </div>
@@ -181,7 +195,7 @@ export default function Home() {
                       <div className="max-w-[70%]">
                         <p className="font-medium text-sm truncate">{bill.description}</p>
                         <p className="text-xs text-muted-foreground">
-                          Vence em {format(bill.date, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}
+                          Vence em {formatDateSafe(bill.date)}
                         </p>
                       </div>
                       <p className="font-medium text-sm">

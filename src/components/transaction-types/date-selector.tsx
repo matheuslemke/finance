@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { UseFormSetValue } from "react-hook-form";
 import { Transaction } from "@/types";
+import { useState, useEffect } from "react";
 
 interface DateSelectorProps {
   date: Date;
@@ -19,6 +20,19 @@ interface DateSelectorProps {
 }
 
 export function DateSelector({ date, setDate, setValue, isSubmitting }: DateSelectorProps) {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const formatDateSafe = (date: Date) => {
+    if (!isClient) {
+      return date.toLocaleDateString('pt-BR');
+    }
+    return format(date, "PPP", { locale: ptBR });
+  };
+
   return (
     <div className="space-y-2">
       <Label htmlFor="date">Data</Label>
@@ -33,7 +47,7 @@ export function DateSelector({ date, setDate, setValue, isSubmitting }: DateSele
             disabled={isSubmitting}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? format(date, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+            {date ? formatDateSafe(date) : <span>Escolha uma data</span>}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">

@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PieChart, Wallet, Settings, LogOut, Menu, X, Tag, CreditCard, FileText, ArrowDownUp, BarChart3, ChevronDown, LineChart, DollarSign, Heart, PiggyBank } from "lucide-react";
+import { Home, PieChart, Wallet, Settings, LogOut, Menu, X, BarChart3, LineChart, DollarSign, Heart, PiggyBank, ArrowDownUp, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/", label: "Dashboard", icon: Home },
@@ -27,21 +26,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // Fechar o menu móvel quando a rota mudar
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // Fechar o menu móvel quando a tela for redimensionada para desktop
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) {
+      if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
         setIsMobileMenuOpen(false);
       }
     };
     
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
   }, []);
 
   return (

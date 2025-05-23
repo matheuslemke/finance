@@ -37,10 +37,20 @@ export function InvoiceProvider({ children }: InvoiceProviderProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoiceCache, setInvoiceCache] = useState<InvoiceCache>({});
   const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
   const [requestedPeriod, setRequestedPeriod] = useState<{ month: number; year: number }>({
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear()
+    month: 1,
+    year: 2024
   });
+  
+  useEffect(() => {
+    setIsClient(true);
+    const now = new Date();
+    setRequestedPeriod({
+      month: now.getMonth() + 1,
+      year: now.getFullYear()
+    });
+  }, []);
   
   const loadInvoicesForPeriod = useCallback(async (month: number, year: number) => {
     const cacheKey = `${month}-${year}`;
@@ -62,15 +72,19 @@ export function InvoiceProvider({ children }: InvoiceProviderProps) {
       setInvoices(data);
     } catch (error) {
       console.error("Erro ao carregar faturas:", error);
-      toast.error("Não foi possível carregar as faturas");
+      if (isClient) {
+        toast.error("Não foi possível carregar as faturas");
+      }
     } finally {
       setLoading(false);
     }
-  }, [invoiceCache]);
+  }, [invoiceCache, isClient]);
 
   useEffect(() => {
-    loadInvoicesForPeriod(requestedPeriod.month, requestedPeriod.year);
-  }, [requestedPeriod, loadInvoicesForPeriod]);
+    if (isClient) {
+      loadInvoicesForPeriod(requestedPeriod.month, requestedPeriod.year);
+    }
+  }, [requestedPeriod, loadInvoicesForPeriod, isClient]);
 
   const getFilteredInvoices = useCallback((month: number, year: number) => {
     const cacheKey = `${month}-${year}`;
@@ -90,7 +104,6 @@ export function InvoiceProvider({ children }: InvoiceProviderProps) {
     try {
       setLoading(true);
       
-      // Get all invoices for this account directly from Supabase
       const { data, error } = await supabase
         .from(invoicesTable)
         .select(`
@@ -103,11 +116,12 @@ export function InvoiceProvider({ children }: InvoiceProviderProps) {
       
       if (error) {
         console.error("Erro ao buscar faturas para a conta:", error);
-        toast.error("Erro ao buscar faturas para a conta");
+        if (isClient) {
+          toast.error("Erro ao buscar faturas para a conta");
+        }
         return [];
       }
       
-      // Convert to Invoice type
       return (data || []).map(invoice => {
         const { accounts, account_id, due_day, ...rest } = invoice;
         return {
@@ -126,12 +140,14 @@ export function InvoiceProvider({ children }: InvoiceProviderProps) {
       });
     } catch (error) {
       console.error("Erro ao buscar faturas para a conta:", error);
-      toast.error("Erro ao buscar faturas para a conta");
+      if (isClient) {
+        toast.error("Erro ao buscar faturas para a conta");
+      }
       return [];
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isClient]);
 
   const fetchInvoiceDetails = useCallback(async (id: string): Promise<Invoice | null> => {
     try {
@@ -140,12 +156,14 @@ export function InvoiceProvider({ children }: InvoiceProviderProps) {
       return invoice;
     } catch (error) {
       console.error("Erro ao buscar detalhes da fatura:", error);
-      toast.error("Erro ao buscar detalhes da fatura");
+      if (isClient) {
+        toast.error("Erro ao buscar detalhes da fatura");
+      }
       return null;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isClient]);
 
   const value = useMemo(() => ({
     invoices,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, TrendingUp, ArrowUpRight, ArrowDownRight, BarChart, DollarSign } from "lucide-react";
-import { useInvestments } from "@/contexts/InvestmentsContext";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Plus, Pencil, Trash2, TrendingUp, ArrowUpRight, ArrowDownRight, BarChart } from "lucide-react";
+import { useInvestments } from "@/context/investment-context";
 import { useAccounts } from "@/context/account-context";
 import { AssetType, Investment } from "@/types";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function InvestmentsPage() {
@@ -31,15 +31,22 @@ export default function InvestmentsPage() {
     assetType: "fixed_income",
     initialValue: 0,
     currentValue: 0,
-    purchaseDate: new Date(),
+    purchaseDate: new Date(2024, 0, 1),
   });
   const [historyData, setHistoryData] = useState({
-    date: new Date(),
+    date: new Date(2024, 0, 1),
     value: 0,
     change: 0,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [historyValue, setHistoryValue] = useState("");
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    const today = new Date();
+    setFormData(prev => ({ ...prev, purchaseDate: today }));
+    setHistoryData(prev => ({ ...prev, date: today }));
+  }, []);
 
   const filteredInvestments = investments.filter(investment => 
     investment.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -140,8 +147,9 @@ export default function InvestmentsPage() {
 
   const openAddHistoryDialog = (investment: Investment) => {
     setSelectedInvestment(investment);
+    const today = isClient ? new Date() : new Date(2024, 0, 1);
     setHistoryData({
-      date: new Date(),
+      date: today,
       value: investment.currentValue,
       change: 0,
     });
@@ -149,20 +157,22 @@ export default function InvestmentsPage() {
   };
 
   const resetForm = () => {
+    const today = isClient ? new Date() : new Date(2024, 0, 1);
     setFormData({
       name: "",
       accountId: "",
       assetType: "fixed_income",
       initialValue: 0,
       currentValue: 0,
-      purchaseDate: new Date(),
+      purchaseDate: today,
     });
     setSelectedInvestment(null);
   };
 
   const resetHistoryForm = () => {
+    const today = isClient ? new Date() : new Date(2024, 0, 1);
     setHistoryData({
-      date: new Date(),
+      date: today,
       value: 0,
       change: 0,
     });
@@ -193,6 +203,9 @@ export default function InvestmentsPage() {
   };
 
   const formatDate = (date: Date) => {
+    if (!isClient) {
+      return date.toLocaleDateString('pt-BR');
+    }
     return format(date, 'dd/MM/yyyy', { locale: ptBR });
   };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { Category } from "@/types";
 import { fetchCategories, addCategory as addCategoryToSupabase, updateCategory as updateCategoryInSupabase, deleteCategory as deleteCategoryFromSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -30,23 +30,32 @@ interface CategoryProviderProps {
 export function CategoryProvider({ children }: CategoryProviderProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    async function loadCategories() {
-      try {
-        setLoading(true);
-        const data = await fetchCategories();
-        setCategories(data);
-      } catch (error) {
-        console.error("Erro ao carregar categorias:", error);
-        toast.error("Não foi possível carregar as categorias");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadCategories();
+    setIsClient(true);
   }, []);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await fetchCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error("Erro ao carregar categorias:", error);
+      if (isClient) {
+        toast.error("Não foi possível carregar as categorias");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      loadCategories();
+    }
+  }, [isClient, loadCategories]);
 
   const addCategory = async (category: Omit<Category, "id">) => {
     try {
@@ -55,15 +64,21 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
       
       if (newCategory) {
         setCategories(prev => [...prev, newCategory]);
-        toast.success("Categoria adicionada com sucesso");
+        if (isClient) {
+          toast.success("Categoria adicionada com sucesso");
+        }
         return newCategory;
       } else {
-        toast.error("Erro ao adicionar categoria: Verifique os dados e tente novamente");
+        if (isClient) {
+          toast.error("Erro ao adicionar categoria: Verifique os dados e tente novamente");
+        }
         return null;
       }
     } catch (error) {
       console.error("Erro ao adicionar categoria:", error);
-      toast.error(`Erro ao adicionar categoria: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      if (isClient) {
+        toast.error(`Erro ao adicionar categoria: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      }
       return null;
     } finally {
       setLoading(false);
@@ -83,13 +98,19 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
               : category
           )
         );
-        toast.success("Categoria atualizada com sucesso");
+        if (isClient) {
+          toast.success("Categoria atualizada com sucesso");
+        }
       } else {
-        toast.error("Erro ao atualizar categoria");
+        if (isClient) {
+          toast.error("Erro ao atualizar categoria");
+        }
       }
     } catch (error) {
       console.error("Erro ao atualizar categoria:", error);
-      toast.error("Erro ao atualizar categoria");
+      if (isClient) {
+        toast.error("Erro ao atualizar categoria");
+      }
     } finally {
       setLoading(false);
     }
@@ -102,13 +123,19 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
       
       if (success) {
         setCategories(prev => prev.filter(category => category.id !== id));
-        toast.success("Categoria excluída com sucesso");
+        if (isClient) {
+          toast.success("Categoria excluída com sucesso");
+        }
       } else {
-        toast.error("Erro ao excluir categoria. Verifique se ela não está sendo usada em transações.");
+        if (isClient) {
+          toast.error("Erro ao excluir categoria. Verifique se ela não está sendo usada em transações.");
+        }
       }
     } catch (error) {
       console.error("Erro ao excluir categoria:", error);
-      toast.error("Erro ao excluir categoria");
+      if (isClient) {
+        toast.error("Erro ao excluir categoria");
+      }
     } finally {
       setLoading(false);
     }

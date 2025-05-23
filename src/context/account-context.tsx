@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { Account } from "@/types";
 import { fetchAccounts, addAccount as addAccountToSupabase, updateAccount as updateAccountInSupabase, deleteAccount as deleteAccountFromSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -30,23 +30,32 @@ interface AccountProviderProps {
 export function AccountProvider({ children }: AccountProviderProps) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    async function loadAccounts() {
-      try {
-        setLoading(true);
-        const data = await fetchAccounts();
-        setAccounts(data);
-      } catch (error) {
-        console.error("Erro ao carregar contas:", error);
-        toast.error("Não foi possível carregar as contas");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadAccounts();
+    setIsClient(true);
   }, []);
+
+  const loadAccounts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await fetchAccounts();
+      setAccounts(data);
+    } catch (error) {
+      console.error("Erro ao carregar contas:", error);
+      if (isClient) {
+        toast.error("Não foi possível carregar as contas");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      loadAccounts();
+    }
+  }, [isClient, loadAccounts]);
 
   const addAccount = async (account: Omit<Account, "id">) => {
     try {
@@ -55,15 +64,21 @@ export function AccountProvider({ children }: AccountProviderProps) {
       
       if (newAccount) {
         setAccounts(prev => [...prev, newAccount]);
-        toast.success("Conta adicionada com sucesso");
+        if (isClient) {
+          toast.success("Conta adicionada com sucesso");
+        }
         return newAccount;
       } else {
-        toast.error("Erro ao adicionar conta: Verifique os dados e tente novamente");
+        if (isClient) {
+          toast.error("Erro ao adicionar conta");
+        }
         return null;
       }
     } catch (error) {
       console.error("Erro ao adicionar conta:", error);
-      toast.error(`Erro ao adicionar conta: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      if (isClient) {
+        toast.error("Erro ao adicionar conta");
+      }
       return null;
     } finally {
       setLoading(false);
@@ -83,13 +98,19 @@ export function AccountProvider({ children }: AccountProviderProps) {
               : account
           )
         );
-        toast.success("Conta atualizada com sucesso");
+        if (isClient) {
+          toast.success("Conta atualizada com sucesso");
+        }
       } else {
-        toast.error("Erro ao atualizar conta");
+        if (isClient) {
+          toast.error("Erro ao atualizar conta");
+        }
       }
     } catch (error) {
       console.error("Erro ao atualizar conta:", error);
-      toast.error("Erro ao atualizar conta");
+      if (isClient) {
+        toast.error("Erro ao atualizar conta");
+      }
     } finally {
       setLoading(false);
     }
@@ -102,13 +123,19 @@ export function AccountProvider({ children }: AccountProviderProps) {
       
       if (success) {
         setAccounts(prev => prev.filter(account => account.id !== id));
-        toast.success("Conta excluída com sucesso");
+        if (isClient) {
+          toast.success("Conta excluída com sucesso");
+        }
       } else {
-        toast.error("Erro ao excluir conta. Verifique se ela não está sendo usada em transações.");
+        if (isClient) {
+          toast.error("Erro ao excluir conta");
+        }
       }
     } catch (error) {
       console.error("Erro ao excluir conta:", error);
-      toast.error("Erro ao excluir conta");
+      if (isClient) {
+        toast.error("Erro ao excluir conta");
+      }
     } finally {
       setLoading(false);
     }

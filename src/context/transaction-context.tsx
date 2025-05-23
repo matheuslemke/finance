@@ -32,11 +32,17 @@ interface TransactionProviderProps {
 export function TransactionProvider({ children }: TransactionProviderProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // On initial load, fetch transactions for the current month
-    fetchTransactionsForMonth(new Date());
+    setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      fetchTransactionsForMonth(new Date());
+    }
+  }, [isClient]);
 
   const fetchTransactionsForMonth = async (date: Date) => {
     try {
@@ -47,7 +53,9 @@ export function TransactionProvider({ children }: TransactionProviderProps) {
       setTransactions(data);
     } catch (error) {
       console.error("Erro ao carregar transações:", error);
-      toast.error("Não foi possível carregar as transações");
+      if (isClient) {
+        toast.error("Não foi possível carregar as transações");
+      }
     } finally {
       setLoading(false);
     }
@@ -60,13 +68,19 @@ export function TransactionProvider({ children }: TransactionProviderProps) {
       
       if (newTransaction) {
         setTransactions(prev => [...prev, newTransaction]);
-        toast.success("Transação adicionada com sucesso");
+        if (isClient) {
+          toast.success("Transação adicionada com sucesso");
+        }
       } else {
-        toast.error("Erro ao adicionar transação: Verifique os dados e tente novamente");
+        if (isClient) {
+          toast.error("Erro ao adicionar transação: Verifique os dados e tente novamente");
+        }
       }
     } catch (error) {
       console.error("Erro ao adicionar transação:", error);
-      toast.error(`Erro ao adicionar transação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      if (isClient) {
+        toast.error(`Erro ao adicionar transação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -85,13 +99,19 @@ export function TransactionProvider({ children }: TransactionProviderProps) {
               : transaction
           )
         );
-        toast.success("Transação atualizada com sucesso");
+        if (isClient) {
+          toast.success("Transação atualizada com sucesso");
+        }
       } else {
-        toast.error("Erro ao atualizar transação");
+        if (isClient) {
+          toast.error("Erro ao atualizar transação");
+        }
       }
     } catch (error) {
       console.error("Erro ao atualizar transação:", error);
-      toast.error("Erro ao atualizar transação");
+      if (isClient) {
+        toast.error("Erro ao atualizar transação");
+      }
     } finally {
       setLoading(false);
     }
@@ -104,13 +124,19 @@ export function TransactionProvider({ children }: TransactionProviderProps) {
       
       if (success) {
         setTransactions(prev => prev.filter(transaction => transaction.id !== id));
-        toast.success("Transação excluída com sucesso");
+        if (isClient) {
+          toast.success("Transação excluída com sucesso");
+        }
       } else {
-        toast.error("Erro ao excluir transação");
+        if (isClient) {
+          toast.error("Erro ao excluir transação");
+        }
       }
     } catch (error) {
       console.error("Erro ao excluir transação:", error);
-      toast.error("Erro ao excluir transação");
+      if (isClient) {
+        toast.error("Erro ao excluir transação");
+      }
     } finally {
       setLoading(false);
     }

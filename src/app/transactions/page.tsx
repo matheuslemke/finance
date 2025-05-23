@@ -27,15 +27,25 @@ export default function TransactionsPage() {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [isClient, setIsClient] = useState(false);
   const fetchRef = useRef(fetchTransactionsForMonth);
 
-  // Keep the function reference stable
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   fetchRef.current = fetchTransactionsForMonth;
   
-  // Load transactions on initial mount
   useEffect(() => {
     fetchRef.current(currentMonth);
   }, [currentMonth]);
+
+  const formatDateSafe = (date: Date, formatString: string = "dd/MMM/yyyy") => {
+    if (!isClient) {
+      return date.toLocaleDateString('pt-BR');
+    }
+    return format(date, formatString, { locale: ptBR });
+  };
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -161,7 +171,7 @@ export default function TransactionsPage() {
       <TransactionListCard className="mb-3 hover:shadow-md transition-shadow">
         <CardContent className="px-4 py-3">
           <div className="flex justify-between items-center">
-            <p className="text-sm text-muted-foreground">{format(transaction.date, "dd/MMM/yyyy", { locale: ptBR })}</p>
+            <p className="text-sm text-muted-foreground">{formatDateSafe(transaction.date)}</p>
             <div className="flex items-center">
               {transaction.type === "income" ? (
                 <ArrowUpRight className="mr-1 h-5 w-5 text-green-500" />
@@ -356,7 +366,7 @@ export default function TransactionsPage() {
                 </Button>
                 <div className="px-3 py-2 rounded-md bg-muted text-center min-w-[140px]">
                   <span className="font-medium">
-                    {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
+                    {formatDateSafe(currentMonth, "MMMM yyyy")}
                   </span>
                 </div>
                 <Button 
@@ -400,7 +410,7 @@ export default function TransactionsPage() {
                             return (
                               <tr key={transaction.id} className="border-b">
                                 <td className="py-3 px-4 text-sm">
-                                  {format(transaction.date, "dd/MMM/yyyy", { locale: ptBR })}
+                                  {formatDateSafe(transaction.date)}
                                 </td>
                                 <td className="py-3 px-4 text-sm max-w-[200px] truncate" title={transaction.description}>{transaction.description}</td>
                                 <td className="py-3 px-4 text-sm">
@@ -568,7 +578,7 @@ export default function TransactionsPage() {
                 </span>
                 <span className="mx-2 text-muted-foreground">•</span>
                 <span className="text-sm text-muted-foreground">
-                  {format(transactionToDelete.date, "dd/MMM/yyyy", { locale: ptBR })}
+                  {formatDateSafe(transactionToDelete.date)}
                 </span>
               </div>
             </div>

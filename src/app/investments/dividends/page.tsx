@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,11 @@ export default function DividendsPage() {
   const [baseValue, setBaseValue] = useState("");
   const [quantity, setQuantity] = useState("");
   const [notes, setNotes] = useState("");
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const stockInvestments = investments.filter(
     (inv) => inv.assetType === "stocks" || inv.assetType === "real_estate"
@@ -99,6 +104,9 @@ export default function DividendsPage() {
   };
 
   const formatDate = (date: Date) => {
+    if (!isClient) {
+      return date.toLocaleDateString('pt-BR');
+    }
     return format(date, "dd/MM/yyyy", { locale: ptBR });
   };
 
